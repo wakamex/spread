@@ -41,7 +41,7 @@ RSVP (Rapid Serial Visual Presentation) displays one word at a time in a fixed p
 
 Spread's design is grounded in cognitive science and psycholinguistics research on visual word recognition, foveal span, and reading dynamics. See [Research.md](Research.md) for the full literature review and rationale behind ORP positioning, morpheme-based splitting, and adaptive timing.
 
-Research compiled primarily by Gemini 2.5 Pro with contributions from Claude Code.
+Research compiled primarily by Gemini 3 Deep Research with contributions from Claude Code.
 
 ## Building from Source
 
