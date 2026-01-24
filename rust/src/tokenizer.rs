@@ -3,9 +3,10 @@
 use crate::types::{ChapterStats, LengthBucket, Punctuation, Word};
 
 /// Maximum characters per chunk for optimal cognitive processing.
-/// Based on research: visual span is 10-12 chars. We use 12 as the fallback
-/// limit when no morpheme boundary is found.
-const MAX_CHUNK_CHARS: usize = 12;
+/// Based on research: visual span is 10-12 chars. We use 10 to ensure
+/// words fit on narrow portrait screens (320dp) at 48sp font size.
+/// SYNC: Must match Kotlin Tokenizer.kt MAX_CHUNK_CHARS
+const MAX_CHUNK_CHARS: usize = 10;
 
 /// Minimum chunk size to avoid tiny fragments that slow comprehension.
 const MIN_CHUNK_CHARS: usize = 3;
@@ -74,9 +75,9 @@ const SUFFIXES: &[&str] = &[
 ];
 
 /// Minimum word length to consider splitting.
-/// Words under this length are processed fast enough without splitting.
-/// Based on research: splitting helps "long, polysyllabic words".
-const MIN_SPLIT_LENGTH: usize = 13;
+/// Words at or above this length get split to fit screen width.
+/// SYNC: Must match Kotlin Tokenizer.kt MIN_SPLIT_LENGTH
+const MIN_SPLIT_LENGTH: usize = 11;
 
 /// Split a long word into chunks at morphological boundaries.
 /// Returns chunks with hyphens: ["Inter-", "national-", "-ization"]

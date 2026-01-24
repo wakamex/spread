@@ -1,25 +1,35 @@
 package app.spread.domain
 
+import app.spread.domain.WordSplitConfig.MAX_CHUNK_CHARS
+import app.spread.domain.WordSplitConfig.MIN_SPLIT_LENGTH
 import org.junit.Assert.*
 import org.junit.Test
 
 class TokenizerTest {
 
     @Test
-    fun `short words are not split`() {
-        val words = tokenize("presentation") // 12 chars - under threshold
-        assertEquals(1, words.size)
-        assertEquals("presentation", words[0].text)
+    fun `words under MIN_SPLIT_LENGTH are not split`() {
+        // "understand" is 10 chars, MIN_SPLIT_LENGTH is 11
+        val words = tokenize("understand")
+        assertEquals(
+            "Word under MIN_SPLIT_LENGTH ($MIN_SPLIT_LENGTH) should not be split",
+            1, words.size
+        )
+        assertEquals("understand", words[0].text)
     }
 
     @Test
-    fun `13 char words are split`() {
-        val words = tokenize("comprehension") // 13 chars - at threshold
-        assertTrue("Word should be split", words.size > 1)
-        // Verify all chunks are under max length
+    fun `words at MIN_SPLIT_LENGTH are split`() {
+        // "programming" is 11 chars, exactly at MIN_SPLIT_LENGTH
+        val words = tokenize("programming")
+        assertTrue("Word at MIN_SPLIT_LENGTH ($MIN_SPLIT_LENGTH) should be split", words.size > 1)
+        // Verify all chunks are under MAX_CHUNK_CHARS
         words.forEach { word ->
             val cleanLen = word.text.filter { it.isLetterOrDigit() }.length
-            assertTrue("Chunk '${word.text}' too long: $cleanLen chars", cleanLen <= 12)
+            assertTrue(
+                "Chunk '${word.text}' ($cleanLen chars) exceeds MAX_CHUNK_CHARS ($MAX_CHUNK_CHARS)",
+                cleanLen <= MAX_CHUNK_CHARS
+            )
         }
     }
 
@@ -35,7 +45,7 @@ class TokenizerTest {
         assertEquals("internationalization", reconstructed)
 
         // First chunk should be prefix "inter-"
-        assertTrue("First chunk should be 'inter-'", words[0].text == "inter-")
+        assertEquals("inter-", words[0].text)
     }
 
     @Test
@@ -46,10 +56,13 @@ class TokenizerTest {
         // Verify first chunk is "electro-" prefix
         assertEquals("electro-", words[0].text)
 
-        // Verify all chunks fit on screen (≤12 letters)
+        // Verify all chunks fit on screen
         words.forEach { word ->
             val cleanLen = word.text.filter { it.isLetterOrDigit() }.length
-            assertTrue("Chunk '${word.text}' too long", cleanLen <= 12)
+            assertTrue(
+                "Chunk '${word.text}' ($cleanLen chars) exceeds MAX_CHUNK_CHARS ($MAX_CHUNK_CHARS)",
+                cleanLen <= MAX_CHUNK_CHARS
+            )
         }
     }
 
@@ -103,15 +116,17 @@ class TokenizerTest {
 
     @Test
     fun `deinstitutionalization is split correctly`() {
-        // "de" prefix is only 2 chars, below MIN_CHUNK_CHARS (3)
-        // Word gets chunked at 12 chars instead
+        // "de" prefix is only 2 chars, below MIN_CHUNK_CHARS
+        // Word gets chunked at MAX_CHUNK_CHARS instead
         val words = tokenize("deinstitutionalization")
         assertTrue("Word should be split", words.size > 1)
 
-        // All chunks should be ≤12 chars
         words.forEach { word ->
             val cleanLen = word.text.filter { it.isLetterOrDigit() }.length
-            assertTrue("Chunk '${word.text}' too long", cleanLen <= 12)
+            assertTrue(
+                "Chunk '${word.text}' ($cleanLen chars) exceeds MAX_CHUNK_CHARS ($MAX_CHUNK_CHARS)",
+                cleanLen <= MAX_CHUNK_CHARS
+            )
         }
 
         // Verify it reconstructs correctly
@@ -120,15 +135,17 @@ class TokenizerTest {
     }
 
     @Test
-    fun `words without affixes are chunked at 12 chars`() {
+    fun `words without affixes are chunked at MAX_CHUNK_CHARS`() {
         // Made-up long word with no recognizable affixes
         val words = tokenize("abcdefghijklmnopqrst") // 20 chars, no affixes
         assertTrue("Word should be split", words.size > 1)
 
-        // All chunks should be ≤12 chars
         words.forEach { word ->
             val cleanLen = word.text.filter { it.isLetterOrDigit() }.length
-            assertTrue("Chunk '${word.text}' exceeds 12 chars: $cleanLen", cleanLen <= 12)
+            assertTrue(
+                "Chunk '${word.text}' ($cleanLen chars) exceeds MAX_CHUNK_CHARS ($MAX_CHUNK_CHARS)",
+                cleanLen <= MAX_CHUNK_CHARS
+            )
         }
     }
 }

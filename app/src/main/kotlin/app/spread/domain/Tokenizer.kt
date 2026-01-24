@@ -8,9 +8,20 @@ package app.spread.domain
  * they fit on screen. Mirrors the Rust tokenizer logic.
  */
 
-private const val MIN_SPLIT_LENGTH = 13
-private const val MAX_CHUNK_CHARS = 12
-private const val MIN_CHUNK_CHARS = 3
+/**
+ * Word splitting constants.
+ * SYNC: These values must match rust/src/tokenizer.rs
+ */
+object WordSplitConfig {
+    /** Split words at or above this length */
+    const val MIN_SPLIT_LENGTH = 11
+
+    /** Maximum characters per chunk (fits 320dp screens at 48sp font) */
+    const val MAX_CHUNK_CHARS = 10
+
+    /** Minimum chunk size to avoid tiny fragments */
+    const val MIN_CHUNK_CHARS = 3
+}
 
 // Common prefixes sorted by length (longest first for greedy matching)
 private val PREFIXES = listOf(
@@ -48,7 +59,7 @@ private fun splitWord(word: String): List<String> {
     val trailingPunct = word.takeLastWhile { !it.isLetterOrDigit() }
     val clean = word.drop(leadingPunct.length).dropLast(trailingPunct.length)
 
-    if (clean.length < MIN_SPLIT_LENGTH) {
+    if (clean.length < WordSplitConfig.MIN_SPLIT_LENGTH) {
         return listOf(word)
     }
 
@@ -58,7 +69,7 @@ private fun splitWord(word: String): List<String> {
     // Find prefix
     var prefixLen = 0
     for (prefix in PREFIXES) {
-        if (lower.startsWith(prefix) && prefix.length >= MIN_CHUNK_CHARS) {
+        if (lower.startsWith(prefix) && prefix.length >= WordSplitConfig.MIN_CHUNK_CHARS) {
             prefixLen = prefix.length
             break
         }
@@ -67,7 +78,7 @@ private fun splitWord(word: String): List<String> {
     // Find suffix
     var suffixLen = 0
     for (suffix in SUFFIXES) {
-        if (lower.endsWith(suffix) && suffix.length >= MIN_CHUNK_CHARS) {
+        if (lower.endsWith(suffix) && suffix.length >= WordSplitConfig.MIN_CHUNK_CHARS) {
             suffixLen = suffix.length
             break
         }
@@ -75,7 +86,7 @@ private fun splitWord(word: String): List<String> {
 
     // Ensure middle isn't too small
     val middleLen = clean.length - prefixLen - suffixLen
-    if (middleLen < MIN_CHUNK_CHARS && prefixLen > 0 && suffixLen > 0) {
+    if (middleLen < WordSplitConfig.MIN_CHUNK_CHARS && prefixLen > 0 && suffixLen > 0) {
         // Sacrifice the shorter affix
         if (prefixLen <= suffixLen) prefixLen = 0 else suffixLen = 0
     }
@@ -92,15 +103,15 @@ private fun splitWord(word: String): List<String> {
         var pos = 0
         while (pos < middle.length) {
             val isFirst = pos == 0 && prefixLen == 0
-            val end = (pos + MAX_CHUNK_CHARS).coerceAtMost(middle.length)
+            val end = (pos + WordSplitConfig.MAX_CHUNK_CHARS).coerceAtMost(middle.length)
             val chunk = middle.substring(pos, end)
 
-            val formatted = if (isFirst && pos + MAX_CHUNK_CHARS >= middle.length && suffixLen == 0) {
+            val formatted = if (isFirst && pos + WordSplitConfig.MAX_CHUNK_CHARS >= middle.length && suffixLen == 0) {
                 // Only chunk, use original punctuation
                 leadingPunct + chunk + trailingPunct
             } else if (isFirst) {
                 leadingPunct + chunk + "-"
-            } else if (pos + MAX_CHUNK_CHARS >= middle.length && suffixLen == 0) {
+            } else if (pos + WordSplitConfig.MAX_CHUNK_CHARS >= middle.length && suffixLen == 0) {
                 "-" + chunk + trailingPunct
             } else {
                 "-" + chunk + "-"
