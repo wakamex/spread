@@ -92,6 +92,9 @@ sealed interface Action {
     // Content
     data class BookLoaded(val book: Book) : Action
     data object BookClosed : Action
+
+    // Settings persistence
+    data class SettingsLoaded(val settings: TimingSettings) : Action
 }
 
 // --- Effects (side effects as data) ---
@@ -100,6 +103,7 @@ sealed interface Effect {
     data class ScheduleTick(val delayMs: Long) : Effect
     data object CancelTick : Effect
     data class SaveProgress(val bookId: BookId, val position: Position) : Effect
+    data class SaveSettings(val settings: TimingSettings) : Effect
 }
 
 // --- Reducer output ---
@@ -203,41 +207,63 @@ fun reduce(state: ReaderState, action: Action): Update {
         is Action.SetBaseWpm -> {
             val wpm = action.wpm.coerceIn(100, 1500)
             val newSettings = state.settings.copy(baseWpm = wpm)
-            Update(state.copy(settings = newSettings).recalculateWpm())
+            Update(
+                state = state.copy(settings = newSettings).recalculateWpm(),
+                effects = listOf(Effect.SaveSettings(newSettings))
+            )
         }
 
         is Action.SetPeriodDelay -> {
             val newSettings = state.settings.copy(periodDelayMs = action.ms.coerceIn(0, 1000))
-            Update(state.copy(settings = newSettings).recalculateWpm())
+            Update(
+                state = state.copy(settings = newSettings).recalculateWpm(),
+                effects = listOf(Effect.SaveSettings(newSettings))
+            )
         }
 
         is Action.SetCommaDelay -> {
             val newSettings = state.settings.copy(commaDelayMs = action.ms.coerceIn(0, 500))
-            Update(state.copy(settings = newSettings).recalculateWpm())
+            Update(
+                state = state.copy(settings = newSettings).recalculateWpm(),
+                effects = listOf(Effect.SaveSettings(newSettings))
+            )
         }
 
         is Action.SetParagraphDelay -> {
             val newSettings = state.settings.copy(paragraphDelayMs = action.ms.coerceIn(0, 2000))
-            Update(state.copy(settings = newSettings).recalculateWpm())
+            Update(
+                state = state.copy(settings = newSettings).recalculateWpm(),
+                effects = listOf(Effect.SaveSettings(newSettings))
+            )
         }
 
         is Action.SetMediumWordExtra -> {
             val newSettings = state.settings.copy(mediumWordExtraMs = action.ms.coerceIn(0, 200))
-            Update(state.copy(settings = newSettings).recalculateWpm())
+            Update(
+                state = state.copy(settings = newSettings).recalculateWpm(),
+                effects = listOf(Effect.SaveSettings(newSettings))
+            )
         }
 
         is Action.SetLongWordExtra -> {
             val newSettings = state.settings.copy(longWordExtraMs = action.ms.coerceIn(0, 300))
-            Update(state.copy(settings = newSettings).recalculateWpm())
+            Update(
+                state = state.copy(settings = newSettings).recalculateWpm(),
+                effects = listOf(Effect.SaveSettings(newSettings))
+            )
         }
 
         is Action.SetVeryLongWordExtra -> {
             val newSettings = state.settings.copy(veryLongWordExtraMs = action.ms.coerceIn(0, 500))
-            Update(state.copy(settings = newSettings).recalculateWpm())
+            Update(
+                state = state.copy(settings = newSettings).recalculateWpm(),
+                effects = listOf(Effect.SaveSettings(newSettings))
+            )
         }
 
         is Action.ApplyPreset -> Update(
-            state = state.copy(settings = action.preset).recalculateWpm()
+            state = state.copy(settings = action.preset).recalculateWpm(),
+            effects = listOf(Effect.SaveSettings(action.preset))
         )
 
         is Action.BookLoaded -> {
@@ -252,6 +278,10 @@ fun reduce(state: ReaderState, action: Action): Update {
         Action.BookClosed -> Update(
             state = state.copy(book = null, position = Position.START, playing = false, effectiveWpmInfo = null),
             effects = listOf(Effect.CancelTick)
+        )
+
+        is Action.SettingsLoaded -> Update(
+            state = state.copy(settings = action.settings).recalculateWpm()
         )
     }
 }

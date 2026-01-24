@@ -1,17 +1,31 @@
 package app.spread.ui
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import app.spread.data.SettingsRepository
 import app.spread.domain.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
-class ReaderViewModel : ViewModel() {
+class ReaderViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val settingsRepository = SettingsRepository(application)
 
     private val _state = MutableStateFlow(ReaderState.Initial)
     val state: StateFlow<ReaderState> = _state.asStateFlow()
 
     private var tickerJob: Job? = null
+    private var saveSettingsJob: Job? = null
+
+    init {
+        // Load saved settings on startup
+        viewModelScope.launch {
+            settingsRepository.settings.first().let { savedSettings ->
+                dispatch(Action.SettingsLoaded(savedSettings))
+            }
+        }
+    }
 
     fun dispatch(action: Action) {
         val (newState, effects) = reduce(_state.value, action)
@@ -25,7 +39,17 @@ class ReaderViewModel : ViewModel() {
                 is Effect.SaveProgress -> {
                     // TODO: Persist to Room
                 }
+                is Effect.SaveSettings -> saveSettings(effect.settings)
             }
+        }
+    }
+
+    private fun saveSettings(settings: TimingSettings) {
+        // Debounce saves to avoid excessive writes during slider dragging
+        saveSettingsJob?.cancel()
+        saveSettingsJob = viewModelScope.launch {
+            delay(500) // Wait 500ms after last change
+            settingsRepository.saveSettings(settings)
         }
     }
 
