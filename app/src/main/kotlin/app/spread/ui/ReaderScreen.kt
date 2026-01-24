@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -240,14 +241,15 @@ private fun BottomBar(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Chapter progress
+        // Chapter progress (rounded ends to match slider thumb)
         LinearProgressIndicator(
             progress = progress.chapter,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(4.dp),
             color = Color.White,
-            trackColor = Color.White.copy(alpha = 0.3f)
+            trackColor = Color.White.copy(alpha = 0.3f),
+            strokeCap = StrokeCap.Round
         )
 
         Spacer(modifier = Modifier.height(4.dp))
@@ -259,28 +261,28 @@ private fun BottomBar(
                 .fillMaxWidth()
                 .height(2.dp),
             color = Color.White.copy(alpha = 0.5f),
-            trackColor = Color.White.copy(alpha = 0.1f)
+            trackColor = Color.White.copy(alpha = 0.05f),
+            strokeCap = StrokeCap.Round
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // WPM slider
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        // WPM slider with centered label
+        Column(modifier = Modifier.fillMaxWidth()) {
             Text(
                 text = "$baseWpm WPM",
-                color = Color.White.copy(alpha = 0.7f),
-                fontSize = 12.sp,
-                modifier = Modifier.width(70.dp)
+                color = Color.White,
+                fontSize = 14.sp,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
             )
+
+            Spacer(modifier = Modifier.height(4.dp))
 
             Slider(
                 value = baseWpm.toFloat(),
                 onValueChange = { onWpmChange(it.roundToInt()) },
                 valueRange = 100f..1000f,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.fillMaxWidth(),
                 colors = SliderDefaults.colors(
                     thumbColor = Color.White,
                     activeTrackColor = Color.White,
