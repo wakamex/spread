@@ -1,67 +1,52 @@
-# Spread - RSVP Speed Reading App
+# Spread
 
-A fast, native RSVP (Rapid Serial Visual Presentation) speed reader for Android.
+A distraction-free RSVP speed reader for Android.
+
+## What is RSVP?
+
+RSVP (Rapid Serial Visual Presentation) displays one word at a time in a fixed position, eliminating eye movement and letting you read faster with better focus. Spread uses research-backed techniques to make this comfortable at high speeds.
 
 ## Features
 
-- **ORP-Centered Display**: Words anchored at Optimal Recognition Point (~35%) for stable eye position
-- **Adaptive Font Sizing**: Font scales per screen width to fit 12 display chars on any device (320dp+)
-- **Morpheme-Based Word Splitting**: Long words split at prefix/suffix boundaries (e.g., `inter-` | `national-` | `-ization`)
-- **Adaptive Timing**: Configurable delays for punctuation and word length with presets (Uniform, Natural, Comprehension)
-- **Effective WPM Display**: O(1) calculation shows actual reading pace accounting for all timing adjustments
-- **Progress Persistence**: Reading position saved per book using Room database
-- **EPUB Support**: Native Rust parser for fast, memory-efficient parsing
-- **Demo Book**: Built-in content for first-time users with restart option
+**Smart Word Display**
+- Words anchored at the Optimal Recognition Point (ORP) — the natural focus point ~35% into each word
+- ORP letter highlighted in orange for instant recognition
+- Guides above and below text prevent eye drift
 
-## Build Requirements
+**Handles Long Words Gracefully**
+- Words over 10 characters split at meaningful boundaries (prefixes/suffixes)
+- "internationalization" becomes `inter-` → `national-` → `-ization`
+- Each chunk stays readable; no tiny fonts or horizontal scrolling
 
-- **JDK**: 17 or 21 (JDK 21 requires AGP 8.3+)
-- **Android SDK**: API 34
-- **Gradle**: 8.x (wrapper included)
-- **Rust**: For native EPUB parser (pre-built binaries included)
+**Adaptive Timing**
+- Short common words flash quickly; long words get proportionally more time
+- Extra pauses at punctuation for natural pacing
+- Three presets: Uniform, Natural, Comprehension — or customize everything
 
-## Building
+**Clean Reading Experience**
+- True black background for OLED screens
+- Zen mode: UI fades away during reading, reappears on tap
+- Adjustable speed from 100-1000 WPM
+
+**Works Offline**
+- All data stays on your device
+- No accounts, no tracking, no ads
+- Supports EPUB files
+
+## Screenshots
+
+*Coming soon*
+
+## Building from Source
+
+Requires JDK 17+ and Android SDK 34.
 
 ```bash
 ./gradlew assembleDebug
 ```
 
-APK output: `app/build/outputs/apk/debug/app-debug.apk`
+The Rust native library is pre-compiled for all Android ABIs. To rebuild it, see [rust/README.md](rust/README.md).
 
-## Build Notes
+## License
 
-### JDK 21 Compatibility
-
-AGP 8.2.x has a known incompatibility with JDK 21's jlink tool when processing Android's `core-for-system-modules.jar`. Error:
-
-```
-ModuleTarget is malformed: platformString missing delimiter: android
-```
-
-**Solution**: Use AGP 8.3.0+ which includes the fix. This is already configured in `build.gradle.kts`.
-
-### Native Library
-
-The Rust-based EPUB parser is pre-compiled for all 4 Android ABIs:
-- `arm64-v8a`
-- `armeabi-v7a`
-- `x86`
-- `x86_64`
-
-To rebuild the native library:
-
-```bash
-cd rust
-cargo ndk -t arm64-v8a -t armeabi-v7a -t x86 -t x86_64 -o ../app/src/main/jniLibs build --release
-```
-
-Requires: [cargo-ndk](https://github.com/aspect-build/cargo-ndk)
-
-## Architecture
-
-- **UI**: Kotlin + Jetpack Compose
-- **State Management**: Functional core with pure reducer
-- **Parsing**: Rust (EPUB) via JNI
-- **Storage**: Room (library), DataStore (settings)
-
-See [CHANGELOG.md](CHANGELOG.md) for detailed implementation notes.
+MIT

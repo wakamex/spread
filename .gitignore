@@ -42,3 +42,8 @@ rust/target/
 
 # images
 *.png
+
+# Signing
+keystore.properties
+*.keystore
+*.jks
