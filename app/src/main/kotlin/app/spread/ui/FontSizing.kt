@@ -17,8 +17,12 @@ object FontSizing {
     /** Character width at base font size (48sp monospace) */
     const val BASE_CHAR_WIDTH_DP = 29f
 
-    /** Horizontal padding from screen edges */
-    const val HORIZONTAL_PADDING_DP = 16f
+    /**
+     * Horizontal padding buffer from screen edges.
+     * Accounts for system insets, font metric variations, and safety margin.
+     * Conservative value ensures text never clips on any device.
+     */
+    const val HORIZONTAL_PADDING_DP = 32f
 
     /** Minimum acceptable font size for readability */
     const val MIN_FONT_SP = 36f
