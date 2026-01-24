@@ -93,8 +93,9 @@ sealed interface Action {
     data class BookLoaded(val book: Book) : Action
     data object BookClosed : Action
 
-    // Settings persistence
+    // Persistence
     data class SettingsLoaded(val settings: TimingSettings) : Action
+    data class RestorePosition(val position: Position) : Action  // Restore without saving
 }
 
 // --- Effects (side effects as data) ---
@@ -283,6 +284,19 @@ fun reduce(state: ReaderState, action: Action): Update {
         is Action.SettingsLoaded -> Update(
             state = state.copy(settings = action.settings).recalculateWpm()
         )
+
+        is Action.RestorePosition -> {
+            // Restore position without emitting SaveProgress (avoids circular save)
+            val book = state.book ?: return Update(state)
+            val chapter = book.chapters.getOrNull(action.position.chapterIndex) ?: return Update(state)
+            val validPosition = Position(
+                chapterIndex = action.position.chapterIndex,
+                wordIndex = action.position.wordIndex.coerceIn(0, chapter.words.lastIndex.coerceAtLeast(0))
+            )
+            Update(
+                state = state.copy(position = validPosition).recalculateWpm()
+            )
+        }
     }
 }
 

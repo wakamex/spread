@@ -48,6 +48,15 @@
 - 500ms debounce prevents excessive writes during slider drag
 - Loaded on startup via `SettingsLoaded` action
 
+#### Book Library & Progress Persistence
+- **Room database** for book library and reading progress
+- `BookEntity` stores book metadata (id, title, author, fileUri, timestamps)
+- `ReadingProgressEntity` stores reading position per book
+- `BookRepository` unified interface for:
+  - Library management (getAllBooks, saveBookToLibrary, deleteBook)
+  - Progress persistence (getProgress, saveProgress)
+  - EPUB parsing (loadBook, loadBookFromBytes)
+
 #### Adaptive Timing
 - Configurable extra delay for punctuation (period, comma, paragraph)
 - Configurable extra delay by word length (medium, long, very long)
@@ -122,16 +131,16 @@
 - Rust/JNI has no Android version restrictions
 
 ### Known Issues
-- Reading progress not persisted (Room database not implemented)
-- No library screen yet
+- No library screen yet (books can be opened but not browsed)
 
 ---
 
 ## Planned
 
 ### Next Priority (P0)
-- [ ] Room database for book library and progress persistence
-- [ ] Remember reading position per book
+- [x] ~~Room database for book library and progress persistence~~ ✓
+- [x] ~~Wire up progress persistence in ViewModel (SaveProgress effect handler)~~ ✓
+- [x] ~~Restore reading position when opening a book~~ ✓
 - [x] ~~Persist settings via DataStore~~ ✓
 
 ### Medium Priority (P1)

@@ -51,7 +51,7 @@ class MainActivity : ComponentActivity() {
                                 val book = loadEpubFromUri(context, uri)
                                 isLoading = false
                                 if (book != null) {
-                                    viewModel.loadBook(book)
+                                    viewModel.loadBook(book, fileUri = uri)
                                 } else {
                                     Toast.makeText(
                                         context,
