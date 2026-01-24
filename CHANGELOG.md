@@ -113,9 +113,13 @@
   - EPUB parsing (loadBook, loadBookFromBytes)
 
 #### Adaptive Timing
+- **sqrt(len/5.2) word length timing** based on psycholinguistic research
+  - Short words (like "the") display faster (~0.76x base time)
+  - Long words get proportionally more time (~1.5x for 12-char words)
+  - Single `lengthTimingScale` setting (0-150%): 0=uniform, 100%=full effect
+  - Multiplier scales with WPM (consistent effect at all speeds)
 - Configurable extra delay for punctuation (period, comma, paragraph)
-- Configurable extra delay by word length (medium, long, very long)
-- **Presets**: Uniform, Natural, Comprehension
+- **Presets**: Uniform, Natural (80% length timing), Comprehension (100%)
 - Per-word delay calculated from pre-classified metadata (no lookahead needed)
 
 #### Effective WPM Display
@@ -198,6 +202,15 @@
 - Covers 99%+ of active Android devices
 - Compose works well with desugaring for older APIs
 - Rust/JNI has no Android version restrictions
+
+#### Why sqrt(len/5.2) for word length timing?
+- Research: processing time scales with square root of word length, not linearly
+- A 10-letter word doesn't take 2x as long as a 5-letter word
+- Formula: `duration = base × sqrt(len / 5.2)` where 5.2 is average English word length
+- Uses multiplier (not additive ms) so effect scales proportionally with WPM
+- At 600 WPM, fixed +40ms is 40% extra; at 200 WPM, it's only 13%
+- Multiplier gives consistent 42% extra for long words at any speed
+- High-frequency "sight words" (the, is, and) naturally get less time
 
 #### Why runtime font measurement instead of hardcoded width?
 - Different devices have different monospace font metrics

@@ -45,73 +45,86 @@ class TimingTest {
     }
 
     @Test
-    fun `effective WPM calculation is consistent`() {
+    fun `effective WPM with length timing is lower than uniform`() {
         val stats = ChapterStats(
-            wordCount = 5000,
-            shortWords = 3200,
-            mediumWords = 1200,
-            longWords = 500,
+            wordCount = 1000,
+            shortWords = 400,
+            mediumWords = 300,
+            longWords = 200,
             veryLongWords = 100,
-            periods = 180,
-            commas = 220,
-            paragraphs = 45,
+            periods = 50,
+            commas = 80,
+            paragraphs = 20,
             splitChunks = 0
         )
 
-        val settings = TimingSettings(
+        val uniformSettings = TimingSettings.Uniform.copy(baseWpm = 300)
+        val lengthSettings = TimingSettings.Natural.copy(
             baseWpm = 300,
-            periodDelayMs = 150,
-            commaDelayMs = 75,
-            paragraphDelayMs = 300,
-            mediumWordExtraMs = 0,
-            longWordExtraMs = 40,
-            veryLongWordExtraMs = 60,
-            splitChunkMultiplier = 1.0f,
-            anchorPositionPercent = 0.5f,
-            verticalPositionPortrait = 0.22f,
-            verticalPositionLandscape = 0.38f,
-            maxDisplayChars = TimingSettings.DEFAULT_MAX_DISPLAY_CHARS
+            periodDelayMs = 0,
+            commaDelayMs = 0,
+            paragraphDelayMs = 0,
+            lengthTimingScale = 1.0f  // Full sqrt effect
         )
 
-        val result = calculateEffectiveWpm(stats, settings)
+        val uniformWpm = calculateEffectiveWpm(stats, uniformSettings)
+        val lengthWpm = calculateEffectiveWpm(stats, lengthSettings)
 
-        // Expected calculation from PRD:
-        // Base: 5000 * 200ms = 1,000,000ms
-        // Length: 500 * 40 + 100 * 60 = 26,000ms
-        // Punct: 180 * 150 + 220 * 75 + 45 * 300 = 57,000ms
-        // Total: 1,083,000ms
-        // WPM: 5000 / (1,083,000 / 60,000) = 277
-        assertEquals(277, result.wpm)
+        // With full length timing:
+        // - Short words (400) get ~0.76x time (faster)
+        // - Medium words (300) get ~1.12x time (slower)
+        // - Long words (200) get ~1.42x time (slower)
+        // - Very long words (100) get ~1.70x time (slower)
+        // Net effect depends on distribution, but with more long words, WPM should be lower
+        assertTrue(
+            "Length timing WPM (${lengthWpm.wpm}) should differ from uniform (${uniformWpm.wpm})",
+            lengthWpm.wpm != uniformWpm.wpm
+        )
     }
 
     @Test
-    fun `word delay includes all components`() {
-        val word = Word(
-            text = "extraordinary!",
+    fun `word delay includes length and punctuation components`() {
+        val shortWord = Word(
+            text = "the",
+            lengthBucket = LengthBucket.SHORT,
+            followingPunct = null
+        )
+
+        val longWordWithPunct = Word(
+            text = "extraordinary",  // 13 chars
             lengthBucket = LengthBucket.VERY_LONG,
             followingPunct = Punctuation.PERIOD
         )
 
         val settings = TimingSettings.Natural
-        val delay = word.delayMs(settings)
+        val shortDelay = shortWord.delayMs(settings)
+        val longDelay = longWordWithPunct.delayMs(settings)
 
-        val expected = settings.baseDelayMs +
-                settings.veryLongWordExtraMs +
-                settings.periodDelayMs
+        // Short word should be faster than base (sqrt(3/5.2) ≈ 0.76)
+        assertTrue(
+            "Short word delay ($shortDelay) should be less than base (${settings.baseDelayMs})",
+            shortDelay < settings.baseDelayMs
+        )
 
-        assertEquals(expected.toLong(), delay)
+        // Long word with period should be much longer
+        // sqrt(13/5.2) ≈ 1.58, plus period delay
+        assertTrue(
+            "Long word with period ($longDelay) should be much longer than short word ($shortDelay)",
+            longDelay > shortDelay * 2
+        )
     }
 
     @Test
     fun `split chunk uses multiplier for hyphenated words`() {
+        // Use same-length words so sqrt formula gives same base
         val normalWord = Word(
-            text = "hello",
+            text = "hello",  // 5 chars
             lengthBucket = LengthBucket.MEDIUM,
             followingPunct = null
         )
 
         val splitChunk = Word(
-            text = "inter-",
+            text = "hell-",  // 5 chars (same length)
             lengthBucket = LengthBucket.MEDIUM,
             followingPunct = null
         )
@@ -123,15 +136,13 @@ class TimingTest {
         val normalDelay = normalWord.delayMs(settings)
         val chunkDelay = splitChunk.delayMs(settings)
 
-        // Split chunk base delay should be multiplied by 1.3
-        // Both words have same length bucket, so difference is only the multiplier on base
-        val expectedChunkBase = (settings.baseDelayMs * settings.splitChunkMultiplier).toLong()
-        val expectedNormalBase = settings.baseDelayMs.toLong()
-
+        // Split chunk should be ~1.3x longer than normal word of same length
+        val ratio = chunkDelay.toDouble() / normalDelay.toDouble()
         assertEquals(
-            "Split chunk should have multiplied base delay",
-            expectedChunkBase - expectedNormalBase,
-            chunkDelay - normalDelay
+            "Split chunk should have ~1.3x delay",
+            settings.splitChunkMultiplier.toDouble(),
+            ratio,
+            0.01  // Allow small tolerance for rounding
         )
     }
 

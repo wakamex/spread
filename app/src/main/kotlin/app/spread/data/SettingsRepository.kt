@@ -19,9 +19,7 @@ class SettingsRepository(private val context: Context) {
         val PERIOD_DELAY = intPreferencesKey("period_delay_ms")
         val COMMA_DELAY = intPreferencesKey("comma_delay_ms")
         val PARAGRAPH_DELAY = intPreferencesKey("paragraph_delay_ms")
-        val MEDIUM_WORD_EXTRA = intPreferencesKey("medium_word_extra_ms")
-        val LONG_WORD_EXTRA = intPreferencesKey("long_word_extra_ms")
-        val VERY_LONG_WORD_EXTRA = intPreferencesKey("very_long_word_extra_ms")
+        val LENGTH_TIMING_SCALE = floatPreferencesKey("length_timing_scale")
         val SPLIT_CHUNK_MULTIPLIER = floatPreferencesKey("split_chunk_multiplier")
         val ANCHOR_POSITION = floatPreferencesKey("anchor_position_percent")
         val VERTICAL_POSITION_PORTRAIT = floatPreferencesKey("vertical_position_portrait")
@@ -43,9 +41,7 @@ class SettingsRepository(private val context: Context) {
                 periodDelayMs = prefs[Keys.PERIOD_DELAY] ?: TimingSettings.Default.periodDelayMs,
                 commaDelayMs = prefs[Keys.COMMA_DELAY] ?: TimingSettings.Default.commaDelayMs,
                 paragraphDelayMs = prefs[Keys.PARAGRAPH_DELAY] ?: TimingSettings.Default.paragraphDelayMs,
-                mediumWordExtraMs = prefs[Keys.MEDIUM_WORD_EXTRA] ?: TimingSettings.Default.mediumWordExtraMs,
-                longWordExtraMs = prefs[Keys.LONG_WORD_EXTRA] ?: TimingSettings.Default.longWordExtraMs,
-                veryLongWordExtraMs = prefs[Keys.VERY_LONG_WORD_EXTRA] ?: TimingSettings.Default.veryLongWordExtraMs,
+                lengthTimingScale = prefs[Keys.LENGTH_TIMING_SCALE] ?: TimingSettings.Default.lengthTimingScale,
                 splitChunkMultiplier = prefs[Keys.SPLIT_CHUNK_MULTIPLIER] ?: TimingSettings.Default.splitChunkMultiplier,
                 anchorPositionPercent = prefs[Keys.ANCHOR_POSITION] ?: TimingSettings.Default.anchorPositionPercent,
                 verticalPositionPortrait = prefs[Keys.VERTICAL_POSITION_PORTRAIT] ?: TimingSettings.Default.verticalPositionPortrait,
@@ -60,9 +56,7 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.PERIOD_DELAY] = settings.periodDelayMs
             prefs[Keys.COMMA_DELAY] = settings.commaDelayMs
             prefs[Keys.PARAGRAPH_DELAY] = settings.paragraphDelayMs
-            prefs[Keys.MEDIUM_WORD_EXTRA] = settings.mediumWordExtraMs
-            prefs[Keys.LONG_WORD_EXTRA] = settings.longWordExtraMs
-            prefs[Keys.VERY_LONG_WORD_EXTRA] = settings.veryLongWordExtraMs
+            prefs[Keys.LENGTH_TIMING_SCALE] = settings.lengthTimingScale
             prefs[Keys.SPLIT_CHUNK_MULTIPLIER] = settings.splitChunkMultiplier
             prefs[Keys.ANCHOR_POSITION] = settings.anchorPositionPercent
             prefs[Keys.VERTICAL_POSITION_PORTRAIT] = settings.verticalPositionPortrait

@@ -106,9 +106,7 @@ sealed interface Action {
     data class SetPeriodDelay(val ms: Int) : Action
     data class SetCommaDelay(val ms: Int) : Action
     data class SetParagraphDelay(val ms: Int) : Action
-    data class SetMediumWordExtra(val ms: Int) : Action
-    data class SetLongWordExtra(val ms: Int) : Action
-    data class SetVeryLongWordExtra(val ms: Int) : Action
+    data class SetLengthTimingScale(val scale: Float) : Action
     data class SetSplitChunkMultiplier(val multiplier: Float) : Action
     data class SetAnchorPosition(val percent: Float) : Action
     data class SetVerticalPositionPortrait(val percent: Float) : Action
@@ -273,24 +271,8 @@ fun reduce(state: ReaderState, action: Action): Update {
             )
         }
 
-        is Action.SetMediumWordExtra -> {
-            val newSettings = state.settings.copy(mediumWordExtraMs = action.ms.coerceIn(0, 200))
-            Update(
-                state = state.copy(settings = newSettings).recalculateWpm(),
-                effects = listOf(Effect.SaveSettings(newSettings))
-            )
-        }
-
-        is Action.SetLongWordExtra -> {
-            val newSettings = state.settings.copy(longWordExtraMs = action.ms.coerceIn(0, 300))
-            Update(
-                state = state.copy(settings = newSettings).recalculateWpm(),
-                effects = listOf(Effect.SaveSettings(newSettings))
-            )
-        }
-
-        is Action.SetVeryLongWordExtra -> {
-            val newSettings = state.settings.copy(veryLongWordExtraMs = action.ms.coerceIn(0, 500))
+        is Action.SetLengthTimingScale -> {
+            val newSettings = state.settings.copy(lengthTimingScale = action.scale.coerceIn(0f, 1.5f))
             Update(
                 state = state.copy(settings = newSettings).recalculateWpm(),
                 effects = listOf(Effect.SaveSettings(newSettings))

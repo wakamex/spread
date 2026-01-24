@@ -1,6 +1,7 @@
 package app.spread.domain
 
 import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 /**
  * Timing configuration and effective WPM calculation.
@@ -12,9 +13,14 @@ data class TimingSettings(
     val periodDelayMs: Int,
     val commaDelayMs: Int,
     val paragraphDelayMs: Int,
-    val mediumWordExtraMs: Int,
-    val longWordExtraMs: Int,
-    val veryLongWordExtraMs: Int,
+    /**
+     * Scale factor for word length timing (0.0 to 1.0).
+     * Uses sqrt(len/5.2) formula from psycholinguistic research.
+     * 0.0 = uniform timing (all words same duration)
+     * 1.0 = full effect (short words faster, long words slower)
+     * Default 0.8 for natural feel without being too aggressive.
+     */
+    val lengthTimingScale: Float,
     /**
      * Duration multiplier for split word chunks (words with hyphens from splitting).
      * 1.0 = no change, 1.3 = 30% longer display time.
@@ -49,6 +55,18 @@ data class TimingSettings(
     val baseDelayMs: Int get() = 60_000 / baseWpm
 
     companion object {
+        /** Average word length in English (used for sqrt timing formula) */
+        const val AVG_WORD_LENGTH = 5.2f
+
+        /**
+         * Bucket-based multipliers for O(1) effective WPM calculation.
+         * Approximates sqrt(avgBucketLength / AVG_WORD_LENGTH).
+         */
+        const val SHORT_WORD_MULTIPLIER = 0.76f   // avg ~3 chars
+        const val MEDIUM_WORD_MULTIPLIER = 1.12f  // avg ~6.5 chars
+        const val LONG_WORD_MULTIPLIER = 1.42f    // avg ~10.5 chars
+        const val VERY_LONG_WORD_MULTIPLIER = 1.70f // avg ~15 chars
+
         /** Default anchor position: 42% from left (left of center) */
         const val DEFAULT_ANCHOR_POSITION = 0.42f
         /** Default split chunk multiplier: 30% extra time */
@@ -65,9 +83,7 @@ data class TimingSettings(
             periodDelayMs = 0,
             commaDelayMs = 0,
             paragraphDelayMs = 0,
-            mediumWordExtraMs = 0,
-            longWordExtraMs = 0,
-            veryLongWordExtraMs = 0,
+            lengthTimingScale = 0.0f,
             splitChunkMultiplier = 1.0f,
             anchorPositionPercent = DEFAULT_ANCHOR_POSITION,
             verticalPositionPortrait = DEFAULT_VERTICAL_PORTRAIT,
@@ -80,9 +96,7 @@ data class TimingSettings(
             periodDelayMs = 150,
             commaDelayMs = 75,
             paragraphDelayMs = 300,
-            mediumWordExtraMs = 20,
-            longWordExtraMs = 40,
-            veryLongWordExtraMs = 60,
+            lengthTimingScale = 0.8f,
             splitChunkMultiplier = DEFAULT_SPLIT_CHUNK_MULTIPLIER,
             anchorPositionPercent = DEFAULT_ANCHOR_POSITION,
             verticalPositionPortrait = DEFAULT_VERTICAL_PORTRAIT,
@@ -95,9 +109,7 @@ data class TimingSettings(
             periodDelayMs = 300,
             commaDelayMs = 150,
             paragraphDelayMs = 500,
-            mediumWordExtraMs = 30,
-            longWordExtraMs = 60,
-            veryLongWordExtraMs = 100,
+            lengthTimingScale = 1.0f,
             splitChunkMultiplier = 1.5f,
             anchorPositionPercent = DEFAULT_ANCHOR_POSITION,
             verticalPositionPortrait = DEFAULT_VERTICAL_PORTRAIT,
@@ -135,20 +147,35 @@ fun calculateEffectiveWpm(
         return EffectiveWpm(wpm = settings.baseWpm, totalMinutes = 0.0, minutesRemaining = 0.0)
     }
 
-    val baseMs = stats.wordCount.toLong() * settings.baseDelayMs
+    val baseDelayMs = settings.baseDelayMs.toDouble()
+    val scale = settings.lengthTimingScale.toDouble()
 
-    val lengthMs = stats.mediumWords.toLong() * settings.mediumWordExtraMs +
-            stats.longWords.toLong() * settings.longWordExtraMs +
-            stats.veryLongWords.toLong() * settings.veryLongWordExtraMs
+    // Calculate weighted base time using sqrt-based multipliers (scaled by lengthTimingScale)
+    // multiplier = 1 + scale * (bucketMultiplier - 1)
+    // This interpolates between 1.0 (uniform) and bucketMultiplier (full effect)
+    fun scaledMultiplier(bucketMultiplier: Float): Double =
+        1.0 + scale * (bucketMultiplier - 1.0)
+
+    val shortMultiplier = scaledMultiplier(TimingSettings.SHORT_WORD_MULTIPLIER)
+    val mediumMultiplier = scaledMultiplier(TimingSettings.MEDIUM_WORD_MULTIPLIER)
+    val longMultiplier = scaledMultiplier(TimingSettings.LONG_WORD_MULTIPLIER)
+    val veryLongMultiplier = scaledMultiplier(TimingSettings.VERY_LONG_WORD_MULTIPLIER)
+
+    val lengthWeightedMs = baseDelayMs * (
+        stats.shortWords * shortMultiplier +
+        stats.mediumWords * mediumMultiplier +
+        stats.longWords * longMultiplier +
+        stats.veryLongWords * veryLongMultiplier
+    )
 
     val punctMs = stats.commas.toLong() * settings.commaDelayMs +
             stats.periods.toLong() * settings.periodDelayMs +
             stats.paragraphs.toLong() * settings.paragraphDelayMs
 
-    // Split chunks use a multiplier on base delay, so extra time = base * (multiplier - 1)
-    val splitChunkExtraMs = (stats.splitChunks * settings.baseDelayMs * (settings.splitChunkMultiplier - 1.0f)).toLong()
+    // Split chunks use a multiplier on their length-adjusted base delay
+    val splitChunkExtraMs = (stats.splitChunks * baseDelayMs * (settings.splitChunkMultiplier - 1.0)).toLong()
 
-    val totalMs = baseMs + lengthMs + punctMs + splitChunkExtraMs
+    val totalMs = lengthWeightedMs + punctMs + splitChunkExtraMs
     val totalMinutes = totalMs / 60_000.0
     val effectiveWpm = (stats.wordCount * 60_000.0 / totalMs).roundToInt()
 
@@ -188,18 +215,28 @@ fun calculateEffectiveWpmInfo(
 }
 
 /**
- * Calculate delay for a specific word.
+ * Calculate delay for a specific word using sqrt(len/avgLen) formula.
+ * This gives proportionally more time to longer words in a natural way.
  */
 fun Word.delayMs(settings: TimingSettings): Long {
-    val base = settings.baseDelayMs.toLong()
+    val baseDelayMs = settings.baseDelayMs.toDouble()
+    val scale = settings.lengthTimingScale.toDouble()
 
-    val lengthExtra = when (lengthBucket) {
-        LengthBucket.SHORT -> 0
-        LengthBucket.MEDIUM -> settings.mediumWordExtraMs
-        LengthBucket.LONG -> settings.longWordExtraMs
-        LengthBucket.VERY_LONG -> settings.veryLongWordExtraMs
+    // Calculate length multiplier using sqrt formula: sqrt(len / AVG_WORD_LENGTH)
+    // Then scale by lengthTimingScale: 1 + scale * (sqrtMultiplier - 1)
+    val wordLength = text.length.coerceAtLeast(1)
+    val sqrtMultiplier = sqrt(wordLength.toDouble() / TimingSettings.AVG_WORD_LENGTH)
+    val lengthMultiplier = 1.0 + scale * (sqrtMultiplier - 1.0)
+
+    // Apply length multiplier to base delay
+    var delayMs = baseDelayMs * lengthMultiplier
+
+    // Apply split chunk multiplier (e.g., 1.3x = 30% longer)
+    if (isSplitChunk) {
+        delayMs *= settings.splitChunkMultiplier
     }
 
+    // Add punctuation delay
     val punctExtra = when (followingPunct) {
         null -> 0
         Punctuation.COMMA -> settings.commaDelayMs
@@ -207,12 +244,5 @@ fun Word.delayMs(settings: TimingSettings): Long {
         Punctuation.PARAGRAPH -> settings.paragraphDelayMs
     }
 
-    // Apply multiplier for split chunks (e.g., 1.3x = 30% longer)
-    val baseWithChunkMultiplier = if (isSplitChunk) {
-        (base * settings.splitChunkMultiplier).toLong()
-    } else {
-        base
-    }
-
-    return baseWithChunkMultiplier + lengthExtra + punctExtra
+    return (delayMs + punctExtra).toLong()
 }

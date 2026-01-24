@@ -157,34 +157,18 @@ fun SettingsSheet(
 
             // Word length delays
             Text(
-                text = "Long Word Delays",
+                text = "Word Length Timing",
                 color = Color.White.copy(alpha = 0.7f),
                 fontSize = 14.sp
             )
             Spacer(modifier = Modifier.height(8.dp))
 
             SettingSlider(
-                label = "Medium (5-8 chars)",
-                value = settings.mediumWordExtraMs.toFloat(),
-                valueRange = 0f..100f,
-                valueLabel = "+${settings.mediumWordExtraMs}ms",
-                onValueChange = { onSettingsChange(Action.SetMediumWordExtra(it.roundToInt())) }
-            )
-
-            SettingSlider(
-                label = "Long (9-12 chars)",
-                value = settings.longWordExtraMs.toFloat(),
-                valueRange = 0f..150f,
-                valueLabel = "+${settings.longWordExtraMs}ms",
-                onValueChange = { onSettingsChange(Action.SetLongWordExtra(it.roundToInt())) }
-            )
-
-            SettingSlider(
-                label = "Very Long (13+)",
-                value = settings.veryLongWordExtraMs.toFloat(),
-                valueRange = 0f..200f,
-                valueLabel = "+${settings.veryLongWordExtraMs}ms",
-                onValueChange = { onSettingsChange(Action.SetVeryLongWordExtra(it.roundToInt())) }
+                label = "Length effect (√len formula)",
+                value = settings.lengthTimingScale,
+                valueRange = 0f..1.5f,
+                valueLabel = "${(settings.lengthTimingScale * 100).roundToInt()}%",
+                onValueChange = { onSettingsChange(Action.SetLengthTimingScale(it)) }
             )
 
         }
@@ -309,12 +293,12 @@ private fun formatDuration(minutes: Double): String {
 // Extension properties for preset detection
 private val TimingSettings.isUniform: Boolean
     get() = periodDelayMs == 0 && commaDelayMs == 0 && paragraphDelayMs == 0 &&
-            mediumWordExtraMs == 0 && longWordExtraMs == 0 && veryLongWordExtraMs == 0
+            lengthTimingScale == 0f
 
 private val TimingSettings.isNatural: Boolean
     get() = periodDelayMs == 150 && commaDelayMs == 75 && paragraphDelayMs == 300 &&
-            mediumWordExtraMs == 20 && longWordExtraMs == 40 && veryLongWordExtraMs == 60
+            lengthTimingScale == 0.8f
 
 private val TimingSettings.isComprehension: Boolean
     get() = periodDelayMs == 300 && commaDelayMs == 150 && paragraphDelayMs == 500 &&
-            mediumWordExtraMs == 30 && longWordExtraMs == 60 && veryLongWordExtraMs == 100
+            lengthTimingScale == 1.0f
