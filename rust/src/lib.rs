@@ -64,3 +64,21 @@ mod tests {
         println!("==============================\n");
     }
 }
+
+#[test]
+fn test_parse_demo_epub() {
+    let epub_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../app/src/main/assets/demo.epub");
+    let data = std::fs::read(epub_path).expect("Failed to read demo.epub");
+    
+    let book = crate::epub::parse_epub(&data).expect("Failed to parse demo.epub");
+    
+    println!("Title: {}", book.metadata.title);
+    println!("Author: {:?}", book.metadata.author);
+    println!("Chapters: {}", book.chapters.len());
+    for ch in &book.chapters {
+        println!("  {} - {} words", ch.title, ch.words.len());
+    }
+    
+    assert_eq!(book.metadata.title, "Understanding Speed Reading");
+    assert_eq!(book.chapters.len(), 3);
+}

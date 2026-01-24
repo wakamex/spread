@@ -67,14 +67,10 @@ class MainActivity : ComponentActivity() {
                     // Load demo book after settings are ready
                     LaunchedEffect(state.settingsLoaded) {
                         if (state.settingsLoaded && state.book == null) {
-                            isLoading = true
-                            scope.launch {
-                                val result = loadDemoBook(context, state.settings.maxDisplayChars)
-                                isLoading = false
-                                if (result != null) {
-                                    val (book, source) = result
-                                    viewModel.loadBook(book, source)
-                                }
+                            val result = loadDemoBook(context, state.settings.maxDisplayChars)
+                            if (result != null) {
+                                val (book, source) = result
+                                viewModel.loadBook(book, source)
                             }
                         }
                     }

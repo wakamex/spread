@@ -5,6 +5,33 @@ plugins {
     id("app.cash.paparazzi")
 }
 
+// Build Rust native library when sources change
+val buildRustLibrary by tasks.registering(Exec::class) {
+    description = "Build Rust native library for all Android ABIs"
+    workingDir = file("../rust")
+    commandLine("./build-android.sh")
+
+    // Inputs: Rust source files
+    inputs.files(fileTree("../rust/src") { include("**/*.rs") })
+    inputs.file("../rust/Cargo.toml")
+    inputs.file("../rust/Cargo.lock")
+
+    // Outputs: compiled libraries
+    outputs.files(
+        file("src/main/jniLibs/arm64-v8a/libspread_core.so"),
+        file("src/main/jniLibs/armeabi-v7a/libspread_core.so"),
+        file("src/main/jniLibs/x86/libspread_core.so"),
+        file("src/main/jniLibs/x86_64/libspread_core.so")
+    )
+}
+
+// Make JNI merge tasks depend on Rust build
+tasks.configureEach {
+    if (name.contains("merge") && name.contains("JniLibFolders")) {
+        dependsOn(buildRustLibrary)
+    }
+}
+
 android {
     namespace = "app.spread"
     compileSdk = 34
