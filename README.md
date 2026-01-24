@@ -11,7 +11,6 @@ RSVP (Rapid Serial Visual Presentation) displays one word at a time in a fixed p
 **Smart Word Display**
 - Words anchored at the Optimal Recognition Point (ORP) — the natural focus point ~35% into each word
 - ORP letter highlighted in orange for instant recognition
-- Guides above and below text prevent eye drift
 
 **Handles Long Words Gracefully**
 - Words over 10 characters split at meaningful boundaries (prefixes/suffixes)
