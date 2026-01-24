@@ -25,6 +25,23 @@
 - Tap to play/pause
 - Base WPM adjustable 100-1000 via slider
 
+#### Morpheme-Based Word Splitting
+- **Long words (≥13 chars) automatically split** at morpheme boundaries
+- Based on research: foveal visual span is 10-12 characters
+- Split at prefix/suffix boundaries for cognitive optimization:
+  - "internationalization" → `inter-` | `national-` | `-ization`
+  - "electroencephalography" → `electro-` | `encephalogr-` | `-aphy`
+- **~100 common prefixes**: inter-, counter-, electro-, neuro-, psycho-, bio-, etc.
+- **~100 common suffixes**: -ization, -ological, -ability, -ment, -tion, etc.
+- Fallback chunking at 12 chars when no morpheme boundary found
+- Hyphen markers signal continuation to the brain
+
+#### File Import
+- **EPUB file picker** using Android Storage Access Framework
+- Reads directly from content URI (no file copying needed)
+- Demo book preserved for first-time users
+- Open book via 📖 button in header
+
 #### Adaptive Timing
 - Configurable extra delay for punctuation (period, comma, paragraph)
 - Configurable extra delay by word length (medium, long, very long)
@@ -47,8 +64,10 @@
 #### Testing Infrastructure
 - **Paparazzi screenshot testing** for visual regression testing
 - WordDisplayTestable component with debug center line
-- Screenshot tests for various word lengths including problem cases
+- Screenshot tests for split word chunks with hyphens
+- Tests for scientific/technical terms (neuropsychological, electroencephalography)
 - Kotlin unit tests for timing calculations and state reducer
+- Rust unit tests for morpheme splitting
 
 ### Technical Decisions
 
@@ -71,24 +90,44 @@
 - The Row is then placed with negative offset to align ORP with anchor
 - Verified pixel-perfect with Paparazzi screenshot tests
 
+#### Why morpheme splitting instead of font scaling?
+- Research: "Standard RSVP fails when encountering long, polysyllabic words"
+- Font scaling degrades readability and breaks the RSVP paradigm
+- Morphological splits preserve semantic structure (meaning units)
+- Brain processes "un-" + "believ" + "-able" faster than arbitrary chunks
+- Consistent chunk sizes maintain reading rhythm
+
+#### Why 12-char max chunk size?
+- Research: foveal visual span is 10-12 characters
+- Words up to 12 chars can be recognized in a single fixation
+- Longer chunks would require micro-saccades, defeating RSVP benefits
+- Matches the MIN_SPLIT_LENGTH of 13 (words ≥13 chars get split)
+
+#### Why ~100 affixes instead of ML-based morpheme detection?
+- Simple prefix/suffix matching covers ~80% of long English words
+- O(1) lookup vs ML inference overhead
+- No external dependencies (Morfessor requires Python)
+- Predictable, consistent splits for user experience
+- Expanded list covers scientific/technical vocabulary
+
 #### Why minSdk 21?
 - Covers 99%+ of active Android devices
 - Compose works well with desugaring for older APIs
 - Rust/JNI has no Android version restrictions
 
 ### Known Issues
-- Demo book is hardcoded; file picker not yet implemented
 - Reading progress not persisted (Room database not implemented)
 - No library screen yet
+- Settings not persisted across app restarts
 
 ---
 
 ## Planned
 
 ### Next Priority (P0)
-- [ ] File picker to import EPUB files
 - [ ] Room database for book library and progress persistence
 - [ ] Remember reading position per book
+- [ ] Persist settings via DataStore
 
 ### Medium Priority (P1)
 - [ ] Library screen with imported books
