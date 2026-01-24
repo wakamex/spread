@@ -2,6 +2,7 @@ package app.spread.ui
 
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
+import app.spread.domain.tokenize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.Modifier
@@ -49,13 +50,13 @@ class WordDisplayScreenshotTest {
 
     @Test
     fun wordDisplay_splitWord() {
-        // "subvocalization" (15 chars) would be split by Rust
-        // Testing the chunks it produces: "sub-", "vocaliz-", "-ation"
+        // "subvocalization" (15 chars) gets split by tokenizer
+        val words = tokenize("subvocalization")
         paparazzi.snapshot {
             Column(modifier = Modifier.fillMaxWidth()) {
-                WordDisplayTestable(word = "sub-", showCenterLine = true)
-                WordDisplayTestable(word = "vocaliz-", showCenterLine = true)
-                WordDisplayTestable(word = "-ation", showCenterLine = true)
+                words.forEach { word ->
+                    WordDisplayTestable(word = word.text, showCenterLine = true)
+                }
             }
         }
     }
@@ -101,20 +102,14 @@ class WordDisplayScreenshotTest {
     }
 
     @Test
-    fun wordDisplay_splitChunks_withHyphens() {
-        // Test hyphenated chunks as produced by Rust morpheme splitter
-        // "internationalization" -> "inter-", "national-", "-ization"
-        val splitChunks = listOf(
-            "inter-",      // prefix chunk
-            "national-",   // middle chunk
-            "-ization",    // suffix chunk
-        )
-
+    fun wordDisplay_splitChunks_internationalization() {
+        // Use actual tokenizer for "internationalization" (20 chars)
+        val words = tokenize("internationalization")
         paparazzi.snapshot {
             Column(modifier = Modifier.fillMaxWidth()) {
-                splitChunks.forEach { chunk ->
+                words.forEach { word ->
                     WordDisplayTestable(
-                        word = chunk,
+                        word = word.text,
                         showCenterLine = true,
                         showBoundaries = true
                     )
@@ -124,31 +119,25 @@ class WordDisplayScreenshotTest {
     }
 
     @Test
-    fun wordDisplay_splitChunks_variousPatterns() {
-        // Test different split patterns from Rust parser
-        val chunks = listOf(
-            // "unbelievability" -> "un-", "believabil-", "-ity"
-            "un-",
-            "believabil-",
-            "-ity",
-            // "counterrevolutionary" -> "counter-", "revolution-", "-ary"
-            "counter-",
-            "revolution-",
-            "-ary",
-            // "deinstitutionalization" -> "de-", "institution-", "-alization"
-            "de-",
-            "institution-",
-            "-alization",
+    fun wordDisplay_splitChunks_variousLongWords() {
+        // Test actual tokenizer output for various long words
+        val longWords = listOf(
+            "counterrevolutionary",     // 20 chars
+            "deinstitutionalization",   // 22 chars
+            "electroencephalography",   // 22 chars
         )
 
         paparazzi.snapshot {
             Column(modifier = Modifier.fillMaxWidth()) {
-                chunks.forEach { chunk ->
-                    WordDisplayTestable(
-                        word = chunk,
-                        showCenterLine = true,
-                        showBoundaries = true
-                    )
+                longWords.forEach { longWord ->
+                    val words = tokenize(longWord)
+                    words.forEach { word ->
+                        WordDisplayTestable(
+                            word = word.text,
+                            showCenterLine = true,
+                            showBoundaries = true
+                        )
+                    }
                 }
             }
         }
@@ -156,24 +145,33 @@ class WordDisplayScreenshotTest {
 
     @Test
     fun wordDisplay_realWorldSentence() {
-        // Simulate a real sentence with mixed word lengths
-        // Short words shown as-is, long words shown as chunks
-        val words = listOf(
-            "The",
-            "quick",
-            "brown",
-            "fox",
-            "jumped",
-            "over",
-            "the",
-            "lazy",
-            "dog",
-        )
+        // Use tokenizer for a real sentence with mixed word lengths
+        val sentence = "The quick brown fox jumped over the lazy dog"
+        val words = tokenize(sentence)
 
         paparazzi.snapshot {
             Column(modifier = Modifier.fillMaxWidth()) {
                 words.forEach { word ->
-                    WordDisplayTestable(word = word, showCenterLine = true)
+                    WordDisplayTestable(word = word.text, showCenterLine = true)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun wordDisplay_sentenceWithLongWords() {
+        // Use tokenizer for sentence containing long words
+        val sentence = "The internationalization of telecommunications requires professionalization"
+        val words = tokenize(sentence)
+
+        paparazzi.snapshot {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                words.forEach { word ->
+                    WordDisplayTestable(
+                        word = word.text,
+                        showCenterLine = true,
+                        showBoundaries = true
+                    )
                 }
             }
         }
