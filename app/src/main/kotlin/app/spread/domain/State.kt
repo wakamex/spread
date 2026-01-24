@@ -96,7 +96,7 @@ sealed interface Action {
     data class SetMediumWordExtra(val ms: Int) : Action
     data class SetLongWordExtra(val ms: Int) : Action
     data class SetVeryLongWordExtra(val ms: Int) : Action
-    data class SetSplitChunkExtra(val ms: Int) : Action
+    data class SetSplitChunkMultiplier(val multiplier: Float) : Action
     data class SetAnchorPosition(val percent: Float) : Action
     data class ApplyPreset(val preset: TimingSettings) : Action
 
@@ -274,8 +274,8 @@ fun reduce(state: ReaderState, action: Action): Update {
             )
         }
 
-        is Action.SetSplitChunkExtra -> {
-            val newSettings = state.settings.copy(splitChunkExtraMs = action.ms.coerceIn(0, 200))
+        is Action.SetSplitChunkMultiplier -> {
+            val newSettings = state.settings.copy(splitChunkMultiplier = action.multiplier.coerceIn(1.0f, 2.0f))
             Update(
                 state = state.copy(settings = newSettings).recalculateWpm(),
                 effects = listOf(Effect.SaveSettings(newSettings))

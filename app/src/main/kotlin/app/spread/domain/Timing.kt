@@ -15,8 +15,12 @@ data class TimingSettings(
     val mediumWordExtraMs: Int,
     val longWordExtraMs: Int,
     val veryLongWordExtraMs: Int,
-    /** Extra delay for split word chunks (words with hyphens from splitting) */
-    val splitChunkExtraMs: Int,
+    /**
+     * Duration multiplier for split word chunks (words with hyphens from splitting).
+     * 1.0 = no change, 1.3 = 30% longer display time.
+     * Helps brain reconstruct split words. Multiplier scales with WPM.
+     */
+    val splitChunkMultiplier: Float,
     /**
      * Horizontal position of the ORP anchor as fraction of screen width.
      * 0.5 = center, 0.42 = left of center (recommended for ORP asymmetry).
@@ -29,6 +33,8 @@ data class TimingSettings(
     companion object {
         /** Default anchor position: 42% from left (left of center) */
         const val DEFAULT_ANCHOR_POSITION = 0.42f
+        /** Default split chunk multiplier: 30% extra time */
+        const val DEFAULT_SPLIT_CHUNK_MULTIPLIER = 1.3f
 
         val Uniform = TimingSettings(
             baseWpm = 300,
@@ -38,7 +44,7 @@ data class TimingSettings(
             mediumWordExtraMs = 0,
             longWordExtraMs = 0,
             veryLongWordExtraMs = 0,
-            splitChunkExtraMs = 0,
+            splitChunkMultiplier = 1.0f,
             anchorPositionPercent = DEFAULT_ANCHOR_POSITION
         )
 
@@ -50,7 +56,7 @@ data class TimingSettings(
             mediumWordExtraMs = 20,
             longWordExtraMs = 40,
             veryLongWordExtraMs = 60,
-            splitChunkExtraMs = 50,
+            splitChunkMultiplier = DEFAULT_SPLIT_CHUNK_MULTIPLIER,
             anchorPositionPercent = DEFAULT_ANCHOR_POSITION
         )
 
@@ -62,7 +68,7 @@ data class TimingSettings(
             mediumWordExtraMs = 30,
             longWordExtraMs = 60,
             veryLongWordExtraMs = 100,
-            splitChunkExtraMs = 80,
+            splitChunkMultiplier = 1.5f,
             anchorPositionPercent = DEFAULT_ANCHOR_POSITION
         )
 
@@ -106,9 +112,10 @@ fun calculateEffectiveWpm(
             stats.periods.toLong() * settings.periodDelayMs +
             stats.paragraphs.toLong() * settings.paragraphDelayMs
 
-    val splitChunkMs = stats.splitChunks.toLong() * settings.splitChunkExtraMs
+    // Split chunks use a multiplier on base delay, so extra time = base * (multiplier - 1)
+    val splitChunkExtraMs = (stats.splitChunks * settings.baseDelayMs * (settings.splitChunkMultiplier - 1.0f)).toLong()
 
-    val totalMs = baseMs + lengthMs + punctMs + splitChunkMs
+    val totalMs = baseMs + lengthMs + punctMs + splitChunkExtraMs
     val totalMinutes = totalMs / 60_000.0
     val effectiveWpm = (stats.wordCount * 60_000.0 / totalMs).roundToInt()
 
@@ -167,7 +174,12 @@ fun Word.delayMs(settings: TimingSettings): Long {
         Punctuation.PARAGRAPH -> settings.paragraphDelayMs
     }
 
-    val splitChunkExtra = if (isSplitChunk) settings.splitChunkExtraMs else 0
+    // Apply multiplier for split chunks (e.g., 1.3x = 30% longer)
+    val baseWithChunkMultiplier = if (isSplitChunk) {
+        (base * settings.splitChunkMultiplier).toLong()
+    } else {
+        base
+    }
 
-    return base + lengthExtra + punctExtra + splitChunkExtra
+    return baseWithChunkMultiplier + lengthExtra + punctExtra
 }

@@ -53,11 +53,12 @@
 - Configurable via `anchorPositionPercent` setting (0.3 to 0.5)
 - Based on psychophysical research on visual span asymmetry
 
-#### Split Chunk Timing Bonus
-- **Extra delay for split word chunks** (words with hyphens from splitting)
-- Helps brain reconstruct split words by giving more time per chunk
-- Default: 50ms extra per chunk in Natural mode, 80ms in Comprehension
-- Configurable via `splitChunkExtraMs` setting
+#### Split Chunk Timing Multiplier
+- **Duration multiplier for split word chunks** (words with hyphens from splitting)
+- Uses multiplier (not constant) per Research.md Zipfian pacing formula
+- Default: 1.3x in Natural mode, 1.5x in Comprehension
+- Scales proportionally with WPM (consistent effect at all speeds)
+- Configurable via `splitChunkMultiplier` setting (1.0-2.0)
 - Counted in effective WPM calculation
 
 #### File Import

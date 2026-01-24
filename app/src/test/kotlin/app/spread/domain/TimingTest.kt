@@ -66,7 +66,7 @@ class TimingTest {
             mediumWordExtraMs = 0,
             longWordExtraMs = 40,
             veryLongWordExtraMs = 60,
-            splitChunkExtraMs = 0,
+            splitChunkMultiplier = 1.0f,
             anchorPositionPercent = 0.5f
         )
 
@@ -100,7 +100,7 @@ class TimingTest {
     }
 
     @Test
-    fun `split chunk delay is added for hyphenated words`() {
+    fun `split chunk uses multiplier for hyphenated words`() {
         val normalWord = Word(
             text = "hello",
             lengthBucket = LengthBucket.MEDIUM,
@@ -116,15 +116,41 @@ class TimingTest {
         assertTrue("Word ending with hyphen should be split chunk", splitChunk.isSplitChunk)
         assertFalse("Normal word should not be split chunk", normalWord.isSplitChunk)
 
-        val settings = TimingSettings.Natural
+        val settings = TimingSettings.Natural  // splitChunkMultiplier = 1.3
         val normalDelay = normalWord.delayMs(settings)
         val chunkDelay = splitChunk.delayMs(settings)
 
+        // Split chunk base delay should be multiplied by 1.3
+        // Both words have same length bucket, so difference is only the multiplier on base
+        val expectedChunkBase = (settings.baseDelayMs * settings.splitChunkMultiplier).toLong()
+        val expectedNormalBase = settings.baseDelayMs.toLong()
+
         assertEquals(
-            "Split chunk should have extra delay",
-            settings.splitChunkExtraMs.toLong(),
+            "Split chunk should have multiplied base delay",
+            expectedChunkBase - expectedNormalBase,
             chunkDelay - normalDelay
         )
+    }
+
+    @Test
+    fun `split chunk multiplier scales with WPM`() {
+        val splitChunk = Word(
+            text = "inter-",
+            lengthBucket = LengthBucket.SHORT,
+            followingPunct = null
+        )
+
+        val slowSettings = TimingSettings.Natural.copy(baseWpm = 200)  // 300ms base
+        val fastSettings = TimingSettings.Natural.copy(baseWpm = 600)  // 100ms base
+
+        val slowDelay = splitChunk.delayMs(slowSettings)
+        val fastDelay = splitChunk.delayMs(fastSettings)
+
+        // At 200 WPM (300ms base), 1.3x = 390ms
+        // At 600 WPM (100ms base), 1.3x = 130ms
+        // Ratio should be 3:1 (same as base WPM ratio)
+        val ratio = slowDelay.toDouble() / fastDelay.toDouble()
+        assertEquals("Multiplier should scale proportionally with WPM", 3.0, ratio, 0.1)
     }
 
     @Test
@@ -153,13 +179,13 @@ class TimingTest {
             splitChunks = 20  // 20% of words are split chunks
         )
 
-        val settings = TimingSettings.Natural  // Has splitChunkExtraMs = 50
+        val settings = TimingSettings.Natural  // splitChunkMultiplier = 1.3
 
         val wpmNoChunks = calculateEffectiveWpm(statsNoChunks, settings)
         val wpmWithChunks = calculateEffectiveWpm(statsWithChunks, settings)
 
         assertTrue(
-            "WPM with split chunks (${ wpmWithChunks.wpm }) should be lower than without (${wpmNoChunks.wpm})",
+            "WPM with split chunks (${wpmWithChunks.wpm}) should be lower than without (${wpmNoChunks.wpm})",
             wpmWithChunks.wpm < wpmNoChunks.wpm
         )
     }
