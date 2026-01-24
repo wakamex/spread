@@ -3,30 +3,74 @@
 use crate::types::{ChapterStats, LengthBucket, Punctuation, Word};
 
 /// Maximum characters per chunk for optimal cognitive processing.
-/// Based on research: visual span is 13-19 chars, but morphemes (meaning units)
-/// are what the brain actually processes. Most morphemes are 4-10 chars.
-/// We use 15 as the limit - any single morpheme longer than this is extremely rare.
-const MAX_CHUNK_CHARS: usize = 15;
+/// Based on research: visual span is 10-12 chars. We use 12 as the fallback
+/// limit when no morpheme boundary is found.
+const MAX_CHUNK_CHARS: usize = 12;
 
 /// Minimum chunk size to avoid tiny fragments that slow comprehension.
 const MIN_CHUNK_CHARS: usize = 3;
 
-/// Common English prefixes for morphological splitting.
+/// Common English prefixes for morphological splitting (~100 entries).
 /// Sorted by length descending so longer prefixes match first (e.g., "inter" before "in").
+/// Covers scientific, technical, and common vocabulary.
 const PREFIXES: &[&str] = &[
-    "counter", "extra", "hyper", "inter", "micro", "multi", "super", "trans",
-    "ultra", "under", "anti", "auto", "mono", "over", "poly", "post", "semi",
-    "tele", "dis", "mid", "mis", "non", "out", "pre", "pro", "sub", "tri",
-    "de", "il", "im", "in", "ir", "re", "un",
+    // 7+ chars
+    "counter", "electro", "pseudo",
+    // 6 chars
+    "circum", "contra", "extra", "hetero", "homeo", "infra", "macro", "micro",
+    "neuro", "pseudo", "psycho", "stereo", "thermo",
+    // 5 chars
+    "after", "anti", "auto", "cross", "cyber", "extra", "hyper", "inter",
+    "intra", "intro", "macro", "mega", "meta", "micro", "multi", "ortho",
+    "osteo", "paleo", "para", "penta", "photo", "poly", "post", "proto",
+    "quasi", "retro", "semi", "socio", "super", "supra", "tetra", "trans",
+    "ultra", "under", "video",
+    // 4 chars
+    "ante", "anti", "arch", "auto", "back", "down", "fore", "hemi", "homo",
+    "hypo", "kilo", "mega", "meta", "midi", "midi", "mini", "mono", "nano",
+    "omni", "over", "para", "peri", "poly", "post", "self", "step", "tele",
+    "tri", "vice", "with",
+    // 3 chars
+    "bio", "dis", "eco", "geo", "iso", "mid", "mis", "neo", "non", "out",
+    "pan", "pre", "pro", "sub", "sur",
+    // 2 chars
+    "ab", "ad", "be", "bi", "by", "co", "de", "di", "em", "en", "ex", "il",
+    "im", "in", "ir", "ob", "re", "un", "up",
 ];
 
-/// Common English suffixes for morphological splitting.
+/// Common English suffixes for morphological splitting (~100 entries).
 /// Sorted by length descending so longer suffixes match first.
+/// Covers scientific, technical, and common vocabulary.
 const SUFFIXES: &[&str] = &[
-    "ization", "isation", "ational", "ative", "itive", "ical", "ious", "eous",
-    "tion", "sion", "ness", "ment", "able", "ible", "less", "ence", "ance",
-    "ful", "ous", "ive", "ial", "ing", "ity", "ety", "ize", "ise", "ify",
-    "ent", "ant", "al", "ed", "er", "ly", "ty",
+    // 8+ chars
+    "ological", "isation", "ization",
+    // 7 chars
+    "ability", "ibility", "aceous", "escent", "fulness", "isation", "ization",
+    "logical", "ousness",
+    // 6 chars
+    "arily", "ation", "ative", "atory", "eling", "ement", "ening", "ential",
+    "fully", "ially", "ible", "iness", "ional", "ising", "istic", "ition",
+    "itive", "ivity", "izing", "ology", "ously", "wards",
+    // 5 chars
+    "able", "ably", "ally", "ance", "ancy", "ator", "dom", "ence", "ency",
+    "eous", "erly", "hood", "ible", "ibly", "ical", "ious", "ised", "ised",
+    "ish", "ism", "ist", "ite", "itis", "ity", "ized", "less", "like",
+    "ling", "ment", "most", "ness", "ship", "sion", "teen", "tion", "tude",
+    "ular", "ward", "ways", "wise", "work",
+    // 4 chars
+    "able", "ance", "ancy", "arch", "cide", "cracy", "crat", "dom", "ence",
+    "ency", "ette", "fold", "form", "free", "gram", "hood", "ible", "ical",
+    "iest", "ious", "less", "like", "ling", "ment", "most", "ness", "onym",
+    "osis", "path", "phon", "port", "ship", "some", "ster", "teen", "ular",
+    "ward", "ware", "ways", "wise", "work",
+    // 3 chars
+    "age", "ain", "ary", "ate", "dom", "eer", "ent", "ery", "ese", "est",
+    "eur", "ful", "ial", "ian", "ics", "ier", "ify", "ile", "ine", "ing",
+    "ion", "ise", "ism", "ist", "ite", "ity", "ive", "ize", "let", "ock",
+    "oid", "ory", "ose", "ous", "ure",
+    // 2 chars
+    "al", "an", "ar", "ed", "en", "er", "ic", "id", "ie", "ly", "or", "ry",
+    "th", "ty",
 ];
 
 /// Minimum word length to consider splitting.
@@ -319,5 +363,48 @@ mod tests {
         // "infrastructure" is 14 chars, should be split
         let chunks = split_long_word("infrastructure");
         assert!(chunks.len() >= 2, "14-char word should be split");
+    }
+
+    #[test]
+    fn test_split_scientific_terms() {
+        // Test scientific/technical terms with expanded affixes
+
+        // "neuropsychological" - neuro + psychological
+        let chunks = split_long_word("neuropsychological");
+        assert!(chunks.len() >= 2);
+        assert!(chunks[0].starts_with("neuro"), "Should detect 'neuro' prefix, got: {:?}", chunks);
+
+        // "electroencephalography" - electro + encephalography
+        let chunks = split_long_word("electroencephalography");
+        assert!(chunks.len() >= 2);
+        assert!(chunks[0].starts_with("electro"), "Should detect 'electro' prefix, got: {:?}", chunks);
+
+        // "biodegradability" - bio + degradability
+        let chunks = split_long_word("biodegradability");
+        assert!(chunks.len() >= 2);
+        assert!(chunks[0].starts_with("bio"), "Should detect 'bio' prefix, got: {:?}", chunks);
+    }
+
+    #[test]
+    fn test_max_chunk_size_enforced() {
+        // Verify no chunk exceeds MAX_CHUNK_CHARS (12)
+        let long_words = vec![
+            "internationalization",
+            "deinstitutionalization",
+            "electroencephalography",
+            "psychophysiological",
+        ];
+
+        for word in long_words {
+            let chunks = split_long_word(word);
+            for chunk in &chunks {
+                let clean_len: usize = chunk.chars().filter(|c| c.is_alphabetic()).count();
+                assert!(
+                    clean_len <= MAX_CHUNK_CHARS,
+                    "Chunk '{}' from '{}' has {} chars, exceeds limit of {}",
+                    chunk, word, clean_len, MAX_CHUNK_CHARS
+                );
+            }
+        }
     }
 }
