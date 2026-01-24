@@ -6,16 +6,11 @@ package app.spread.domain
 
 /**
  * Source data for re-parsing a book when settings change.
+ * Stores EPUB bytes for instant re-parsing.
  */
-sealed interface BookSource {
-    /** EPUB book - store bytes for re-parsing */
-    data class Epub(val bytes: ByteArray, val bookId: String) : BookSource {
-        override fun equals(other: Any?) = other is Epub && bookId == other.bookId
-        override fun hashCode() = bookId.hashCode()
-    }
-
-    /** Demo book - no storage needed, regenerate from hardcoded content */
-    data object Demo : BookSource
+data class BookSource(val bytes: ByteArray, val bookId: String) {
+    override fun equals(other: Any?) = other is BookSource && bookId == other.bookId
+    override fun hashCode() = bookId.hashCode()
 }
 
 data class ReaderState(

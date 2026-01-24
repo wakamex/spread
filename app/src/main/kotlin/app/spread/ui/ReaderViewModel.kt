@@ -72,15 +72,9 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         // Cancel any pending re-parse
         reparseJob?.cancel()
         reparseJob = viewModelScope.launch(Dispatchers.IO) {
-            val newBook = when (val source = effect.source) {
-                is BookSource.Epub -> {
-                    NativeParser.parseEpubWithConfig(source.bytes, effect.maxChunkChars)
-                        ?.toDomain(source.bookId)
-                }
-                is BookSource.Demo -> {
-                    createDemoBook(effect.maxChunkChars)
-                }
-            }
+            val source = effect.source
+            val newBook = NativeParser.parseEpubWithConfig(source.bytes, effect.maxChunkChars)
+                ?.toDomain(source.bookId)
 
             if (newBook != null) {
                 val newPosition = mapPositionAfterReparse(

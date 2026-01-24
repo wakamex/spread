@@ -56,7 +56,9 @@
 - Settings loaded before demo book to avoid visual jutter on startup
 - Persisted via DataStore
 
-#### Demo Book Restart
+#### Demo Book
+- **Demo book bundled as EPUB** in assets (~5KB)
+- Loaded through same code path as user EPUBs (unified parsing)
 - **Restart button** appears when book finishes
 - Shows "Finished!" message with option to restart from beginning
 
@@ -169,6 +171,13 @@
 - Re-parsing is fast: ~200ms for 135K word book (Pride & Prejudice benchmark)
 - Position mapping via character offset preserves reading progress
 - Keeps architecture simple: one code path for all chunk sizes
+
+#### Why bundle demo book as EPUB instead of hardcoded Kotlin?
+- Unified code path: Demo uses same parsing as user books
+- Removes ~60 lines of hardcoded text and chapter creation
+- Simplifies BookSource to single data class (no sealed interface)
+- Demo content editable without recompiling (just replace asset)
+- Tiny overhead: 5KB EPUB vs similar Kotlin string literals
 
 #### Why ~100 affixes instead of ML-based morpheme detection?
 - Simple prefix/suffix matching covers ~80% of long English words
