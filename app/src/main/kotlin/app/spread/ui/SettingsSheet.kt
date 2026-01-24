@@ -1,6 +1,8 @@
 package app.spread.ui
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,15 +28,25 @@ fun SettingsSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
+                .navigationBarsPadding()
                 .padding(bottom = 32.dp)
         ) {
             Text(
                 text = "Reading Settings",
                 color = Color.White,
                 fontSize = 20.sp,
-                modifier = Modifier.padding(bottom = 24.dp)
+                modifier = Modifier.padding(bottom = 16.dp)
             )
+
+            // Effective WPM display - prominent position
+            effectiveWpmInfo?.let { info ->
+                EffectiveWpmDisplay(info = info, baseWpm = settings.baseWpm)
+                Spacer(modifier = Modifier.height(24.dp))
+                Divider(color = Color.White.copy(alpha = 0.1f))
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
             // Base WPM
             SettingSlider(
@@ -148,14 +160,6 @@ fun SettingsSheet(
                 onValueChange = { onSettingsChange(Action.SetVeryLongWordExtra(it.roundToInt())) }
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
-            Divider(color = Color.White.copy(alpha = 0.1f))
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Effective WPM display
-            effectiveWpmInfo?.let { info ->
-                EffectiveWpmDisplay(info = info, baseWpm = settings.baseWpm)
-            }
         }
     }
 }

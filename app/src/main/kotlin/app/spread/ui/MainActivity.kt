@@ -4,12 +4,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.spread.domain.*
 import app.spread.ui.theme.SpreadTheme
@@ -21,9 +19,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             SpreadTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = Color.Black
+                Box(
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     val viewModel: ReaderViewModel = viewModel()
                     val state by viewModel.state.collectAsState()

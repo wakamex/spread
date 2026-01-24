@@ -36,6 +36,7 @@ fun ReaderScreen(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black)
+            .statusBarsPadding()
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -87,7 +88,8 @@ private fun TopBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -100,7 +102,7 @@ private fun TopBar(
         )
 
         IconButton(onClick = onSettingsClick) {
-            Text("⚙", fontSize = 20.sp)
+            Text("⚙", fontSize = 20.sp, color = Color.White)
         }
     }
 }
