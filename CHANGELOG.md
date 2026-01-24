@@ -42,6 +42,12 @@
 - Demo book preserved for first-time users
 - Open book via 📖 button in header
 
+#### Settings Persistence
+- **All timing settings persisted** using Jetpack DataStore
+- Settings survive app restart
+- 500ms debounce prevents excessive writes during slider drag
+- Loaded on startup via `SettingsLoaded` action
+
 #### Adaptive Timing
 - Configurable extra delay for punctuation (period, comma, paragraph)
 - Configurable extra delay by word length (medium, long, very long)
@@ -118,7 +124,6 @@
 ### Known Issues
 - Reading progress not persisted (Room database not implemented)
 - No library screen yet
-- Settings not persisted across app restarts
 
 ---
 
@@ -127,7 +132,7 @@
 ### Next Priority (P0)
 - [ ] Room database for book library and progress persistence
 - [ ] Remember reading position per book
-- [ ] Persist settings via DataStore
+- [x] ~~Persist settings via DataStore~~ ✓
 
 ### Medium Priority (P1)
 - [ ] Library screen with imported books
