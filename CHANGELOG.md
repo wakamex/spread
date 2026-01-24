@@ -47,6 +47,19 @@
 - **Restart button** appears when book finishes
 - Shows "Finished!" message with option to restart from beginning
 
+#### Left-Shifted Anchor Position
+- **Anchor at 42% of screen width** (left of center) by default
+- Accommodates ORP asymmetry: ORP at ~35% of word means 65% extends right
+- Configurable via `anchorPositionPercent` setting (0.3 to 0.5)
+- Based on psychophysical research on visual span asymmetry
+
+#### Split Chunk Timing Bonus
+- **Extra delay for split word chunks** (words with hyphens from splitting)
+- Helps brain reconstruct split words by giving more time per chunk
+- Default: 50ms extra per chunk in Natural mode, 80ms in Comprehension
+- Configurable via `splitChunkExtraMs` setting
+- Counted in effective WPM calculation
+
 #### File Import
 - **EPUB file picker** using Android Storage Access Framework
 - Reads directly from content URI (no file copying needed)

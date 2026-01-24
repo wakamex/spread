@@ -96,6 +96,8 @@ sealed interface Action {
     data class SetMediumWordExtra(val ms: Int) : Action
     data class SetLongWordExtra(val ms: Int) : Action
     data class SetVeryLongWordExtra(val ms: Int) : Action
+    data class SetSplitChunkExtra(val ms: Int) : Action
+    data class SetAnchorPosition(val percent: Float) : Action
     data class ApplyPreset(val preset: TimingSettings) : Action
 
     // Content
@@ -268,6 +270,22 @@ fun reduce(state: ReaderState, action: Action): Update {
             val newSettings = state.settings.copy(veryLongWordExtraMs = action.ms.coerceIn(0, 500))
             Update(
                 state = state.copy(settings = newSettings).recalculateWpm(),
+                effects = listOf(Effect.SaveSettings(newSettings))
+            )
+        }
+
+        is Action.SetSplitChunkExtra -> {
+            val newSettings = state.settings.copy(splitChunkExtraMs = action.ms.coerceIn(0, 200))
+            Update(
+                state = state.copy(settings = newSettings).recalculateWpm(),
+                effects = listOf(Effect.SaveSettings(newSettings))
+            )
+        }
+
+        is Action.SetAnchorPosition -> {
+            val newSettings = state.settings.copy(anchorPositionPercent = action.percent.coerceIn(0.3f, 0.5f))
+            Update(
+                state = state.copy(settings = newSettings),
                 effects = listOf(Effect.SaveSettings(newSettings))
             )
         }

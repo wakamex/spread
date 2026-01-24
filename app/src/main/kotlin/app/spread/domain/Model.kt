@@ -34,7 +34,14 @@ data class Word(
     val text: String,
     val lengthBucket: LengthBucket,
     val followingPunct: Punctuation?
-)
+) {
+    /**
+     * True if this word is a split chunk (has leading or trailing hyphen).
+     * Split chunks get extra display time to help with word reconstruction.
+     */
+    val isSplitChunk: Boolean
+        get() = text.startsWith("-") || (text.endsWith("-") && followingPunct == null)
+}
 
 enum class LengthBucket {
     SHORT,      // 1-4 chars
@@ -76,7 +83,8 @@ data class ChapterStats(
     val veryLongWords: Int,
     val periods: Int,
     val commas: Int,
-    val paragraphs: Int
+    val paragraphs: Int,
+    val splitChunks: Int
 ) {
     operator fun plus(other: ChapterStats) = ChapterStats(
         wordCount = wordCount + other.wordCount,
@@ -86,11 +94,12 @@ data class ChapterStats(
         veryLongWords = veryLongWords + other.veryLongWords,
         periods = periods + other.periods,
         commas = commas + other.commas,
-        paragraphs = paragraphs + other.paragraphs
+        paragraphs = paragraphs + other.paragraphs,
+        splitChunks = splitChunks + other.splitChunks
     )
 
     companion object {
-        val ZERO = ChapterStats(0, 0, 0, 0, 0, 0, 0, 0)
+        val ZERO = ChapterStats(0, 0, 0, 0, 0, 0, 0, 0, 0)
 
         fun fromWords(words: List<Word>): ChapterStats {
             var short = 0
@@ -100,6 +109,7 @@ data class ChapterStats(
             var periods = 0
             var commas = 0
             var paragraphs = 0
+            var splitChunks = 0
 
             for (word in words) {
                 when (word.lengthBucket) {
@@ -114,6 +124,7 @@ data class ChapterStats(
                     Punctuation.PARAGRAPH -> paragraphs++
                     null -> {}
                 }
+                if (word.isSplitChunk) splitChunks++
             }
 
             return ChapterStats(
@@ -124,7 +135,8 @@ data class ChapterStats(
                 veryLongWords = veryLong,
                 periods = periods,
                 commas = commas,
-                paragraphs = paragraphs
+                paragraphs = paragraphs,
+                splitChunks = splitChunks
             )
         }
     }

@@ -22,6 +22,8 @@ class SettingsRepository(private val context: Context) {
         val MEDIUM_WORD_EXTRA = intPreferencesKey("medium_word_extra_ms")
         val LONG_WORD_EXTRA = intPreferencesKey("long_word_extra_ms")
         val VERY_LONG_WORD_EXTRA = intPreferencesKey("very_long_word_extra_ms")
+        val SPLIT_CHUNK_EXTRA = intPreferencesKey("split_chunk_extra_ms")
+        val ANCHOR_POSITION = floatPreferencesKey("anchor_position_percent")
     }
 
     val settings: Flow<TimingSettings> = context.dataStore.data
@@ -40,7 +42,9 @@ class SettingsRepository(private val context: Context) {
                 paragraphDelayMs = prefs[Keys.PARAGRAPH_DELAY] ?: TimingSettings.Default.paragraphDelayMs,
                 mediumWordExtraMs = prefs[Keys.MEDIUM_WORD_EXTRA] ?: TimingSettings.Default.mediumWordExtraMs,
                 longWordExtraMs = prefs[Keys.LONG_WORD_EXTRA] ?: TimingSettings.Default.longWordExtraMs,
-                veryLongWordExtraMs = prefs[Keys.VERY_LONG_WORD_EXTRA] ?: TimingSettings.Default.veryLongWordExtraMs
+                veryLongWordExtraMs = prefs[Keys.VERY_LONG_WORD_EXTRA] ?: TimingSettings.Default.veryLongWordExtraMs,
+                splitChunkExtraMs = prefs[Keys.SPLIT_CHUNK_EXTRA] ?: TimingSettings.Default.splitChunkExtraMs,
+                anchorPositionPercent = prefs[Keys.ANCHOR_POSITION] ?: TimingSettings.Default.anchorPositionPercent
             )
         }
 
@@ -53,6 +57,8 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.MEDIUM_WORD_EXTRA] = settings.mediumWordExtraMs
             prefs[Keys.LONG_WORD_EXTRA] = settings.longWordExtraMs
             prefs[Keys.VERY_LONG_WORD_EXTRA] = settings.veryLongWordExtraMs
+            prefs[Keys.SPLIT_CHUNK_EXTRA] = settings.splitChunkExtraMs
+            prefs[Keys.ANCHOR_POSITION] = settings.anchorPositionPercent
         }
     }
 }

@@ -103,6 +103,7 @@ fun ReaderScreen(
                 else -> {
                     WordDisplay(
                         word = word,
+                        anchorPositionPercent = state.settings.anchorPositionPercent,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 48.dp) // Upper third positioning
@@ -172,6 +173,7 @@ private fun rememberOptimalFontSize(): androidx.compose.ui.unit.TextUnit {
 @Composable
 private fun WordDisplay(
     word: String,
+    anchorPositionPercent: Float,
     modifier: Modifier = Modifier
 ) {
     if (word.isEmpty()) {
@@ -197,10 +199,12 @@ private fun WordDisplay(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Word with ORP center-locked using dynamic measurement
+        // Word with ORP positioned at anchorPositionPercent of screen width
+        // Default 0.42 (42%) places anchor left of center to accommodate
+        // the asymmetric ORP (35% into word = more chars extend right)
         Box(
             modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.CenterStart
         ) {
             Row(
                 modifier = Modifier.layout { measurable, constraints ->
@@ -215,11 +219,13 @@ private fun WordDisplay(
                     // The exact center-point of the ORP letter relative to Row's start
                     val orpCenterInRow = (orpIndex * charWidth) + (charWidth / 2f)
 
-                    // Use zero width so Box centers at our "anchor point"
-                    // Then place the Row offset so ORP aligns with that anchor
-                    layout(0, placeable.height) {
+                    // Calculate anchor X position based on anchorPositionPercent
+                    val anchorX = constraints.maxWidth * anchorPositionPercent
+
+                    // Place word so ORP aligns with anchor position
+                    layout(constraints.maxWidth, placeable.height) {
                         placeable.placeRelative(
-                            x = (-orpCenterInRow).roundToInt(),
+                            x = (anchorX - orpCenterInRow).roundToInt(),
                             y = 0
                         )
                     }

@@ -15,7 +15,8 @@ class TimingTest {
             veryLongWords = 100,
             periods = 50,
             commas = 80,
-            paragraphs = 20
+            paragraphs = 20,
+            splitChunks = 0
         )
 
         val result = calculateEffectiveWpm(stats, TimingSettings.Uniform)
@@ -33,7 +34,8 @@ class TimingTest {
             veryLongWords = 100,
             periods = 50,
             commas = 80,
-            paragraphs = 20
+            paragraphs = 20,
+            splitChunks = 50
         )
 
         val result = calculateEffectiveWpm(stats, TimingSettings.Natural)
@@ -52,7 +54,8 @@ class TimingTest {
             veryLongWords = 100,
             periods = 180,
             commas = 220,
-            paragraphs = 45
+            paragraphs = 45,
+            splitChunks = 0
         )
 
         val settings = TimingSettings(
@@ -62,7 +65,9 @@ class TimingTest {
             paragraphDelayMs = 300,
             mediumWordExtraMs = 0,
             longWordExtraMs = 40,
-            veryLongWordExtraMs = 60
+            veryLongWordExtraMs = 60,
+            splitChunkExtraMs = 0,
+            anchorPositionPercent = 0.5f
         )
 
         val result = calculateEffectiveWpm(stats, settings)
@@ -95,6 +100,71 @@ class TimingTest {
     }
 
     @Test
+    fun `split chunk delay is added for hyphenated words`() {
+        val normalWord = Word(
+            text = "hello",
+            lengthBucket = LengthBucket.MEDIUM,
+            followingPunct = null
+        )
+
+        val splitChunk = Word(
+            text = "inter-",
+            lengthBucket = LengthBucket.MEDIUM,
+            followingPunct = null
+        )
+
+        assertTrue("Word ending with hyphen should be split chunk", splitChunk.isSplitChunk)
+        assertFalse("Normal word should not be split chunk", normalWord.isSplitChunk)
+
+        val settings = TimingSettings.Natural
+        val normalDelay = normalWord.delayMs(settings)
+        val chunkDelay = splitChunk.delayMs(settings)
+
+        assertEquals(
+            "Split chunk should have extra delay",
+            settings.splitChunkExtraMs.toLong(),
+            chunkDelay - normalDelay
+        )
+    }
+
+    @Test
+    fun `split chunks are counted in effective WPM`() {
+        val statsNoChunks = ChapterStats(
+            wordCount = 100,
+            shortWords = 100,
+            mediumWords = 0,
+            longWords = 0,
+            veryLongWords = 0,
+            periods = 0,
+            commas = 0,
+            paragraphs = 0,
+            splitChunks = 0
+        )
+
+        val statsWithChunks = ChapterStats(
+            wordCount = 100,
+            shortWords = 100,
+            mediumWords = 0,
+            longWords = 0,
+            veryLongWords = 0,
+            periods = 0,
+            commas = 0,
+            paragraphs = 0,
+            splitChunks = 20  // 20% of words are split chunks
+        )
+
+        val settings = TimingSettings.Natural  // Has splitChunkExtraMs = 50
+
+        val wpmNoChunks = calculateEffectiveWpm(statsNoChunks, settings)
+        val wpmWithChunks = calculateEffectiveWpm(statsWithChunks, settings)
+
+        assertTrue(
+            "WPM with split chunks (${ wpmWithChunks.wpm }) should be lower than without (${wpmNoChunks.wpm})",
+            wpmWithChunks.wpm < wpmNoChunks.wpm
+        )
+    }
+
+    @Test
     fun `minutes remaining decreases as words are read`() {
         val stats = ChapterStats(
             wordCount = 100,
@@ -104,7 +174,8 @@ class TimingTest {
             veryLongWords = 0,
             periods = 5,
             commas = 10,
-            paragraphs = 3
+            paragraphs = 3,
+            splitChunks = 0
         )
 
         val atStart = calculateEffectiveWpm(stats, TimingSettings.Uniform, wordsRead = 0)
