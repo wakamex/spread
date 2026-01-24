@@ -1,0 +1,41 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Android Studio
+.idea/
+*.iml
+local.properties
+
+# APKs
+*.apk
+*.aab
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test outputs
+/app/build/
+
+# Kotlin
+*.kotlin_module
+
+# Decompiled APK (from analysis)
+speedread_extracted/
+speedread_src/
+speedread_decompiled/
+speedread_jadx/
+*.xapk
+androguard.db*
+androguard.log
+
+# Rust build artifacts
+rust/target/
+
+# Claude
+.claude/
