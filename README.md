@@ -13,8 +13,9 @@ RSVP (Rapid Serial Visual Presentation) displays one word at a time in a fixed p
 - ORP letter highlighted in orange for instant recognition
 
 **Handles Long Words Gracefully**
-- Words over 10 characters split at meaningful boundaries (prefixes/suffixes)
+- Long words split at meaningful boundaries (prefixes/suffixes)
 - "internationalization" becomes `inter-` → `national-` → `-ization`
+- Configurable threshold (default 10 characters) balances chunk size vs font size
 - Each chunk stays readable; no tiny fonts or horizontal scrolling
 
 **Adaptive Timing**
