@@ -23,6 +23,10 @@
 - **Upper-third vertical positioning** for ergonomic focus
 - **Subtle guide lines** above/below text to prevent eye drift
 - Tap to play/pause
+- **Zen mode**: UI fades out during playback for distraction-free reading
+  - TopBar and BottomBar animate to transparent when playing
+  - Word position stays fixed (bars remain in layout, only alpha changes)
+  - Tap to pause reveals controls
 - Base WPM adjustable 100-1000 via slider
 
 #### Morpheme-Based Word Splitting
@@ -221,7 +225,7 @@
 - [ ] Swipe left/right for prev/next word
 - [ ] Volume buttons to adjust WPM
 - [ ] Chapter list with tap to jump
-- [ ] Zen mode (hide UI during playback, show on pause)
+- [x] ~~Zen mode (hide UI during playback, show on pause)~~ ✓
 - [ ] Scrub progress bar to seek
 
 ### Lower Priority (P2)

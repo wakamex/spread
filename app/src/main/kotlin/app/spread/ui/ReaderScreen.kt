@@ -1,5 +1,6 @@
 package app.spread.ui
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -10,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.Constraints
@@ -44,6 +46,12 @@ fun ReaderScreen(
     val chapter = state.currentChapter
     val effectiveWpm = state.effectiveWpmInfo
 
+    // Zen mode: animate UI alpha instead of removing from layout (prevents word position shift)
+    val uiAlpha by animateFloatAsState(
+        targetValue = if (state.playing) 0f else 1f,
+        label = "zenModeAlpha"
+    )
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -56,14 +64,15 @@ fun ReaderScreen(
             ),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Header
+        // Header - fades in Zen mode (during playback) but stays in layout
         TopBar(
             chapterTitle = chapter?.title ?: "",
             onOpenBook = onOpenBook,
-            onSettingsClick = onSettingsClick
+            onSettingsClick = onSettingsClick,
+            alpha = uiAlpha
         )
 
-        // Word display - vertical position adapts to orientation for ergonomics
+        // Word display area
         val configuration = LocalConfiguration.current
         val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
         val verticalPosition = if (isLandscape) {
@@ -77,7 +86,7 @@ fun ReaderScreen(
                 .weight(1f)
                 .fillMaxWidth()
         ) {
-            val verticalOffsetDp = (maxHeight * verticalPosition)
+            val verticalOffsetDp = maxHeight * verticalPosition
 
             when {
                 state.book == null -> {
@@ -125,14 +134,15 @@ fun ReaderScreen(
             }
         }
 
-        // Bottom controls
+        // Bottom controls - fades in Zen mode (during playback) but stays in layout
         BottomBar(
             playing = state.playing,
             effectiveWpm = effectiveWpm,
             progress = state.progress,
             baseWpm = state.settings.baseWpm,
             onSeek = onSeek,
-            onWpmChange = onWpmChange
+            onWpmChange = onWpmChange,
+            alpha = uiAlpha
         )
     }
 }
@@ -141,13 +151,15 @@ fun ReaderScreen(
 private fun TopBar(
     chapterTitle: String,
     onOpenBook: () -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    alpha: Float = 1f
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .padding(bottom = 16.dp),
+            .padding(bottom = 16.dp)
+            .graphicsLayer { this.alpha = alpha },
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -312,12 +324,14 @@ private fun BottomBar(
     progress: Progress,
     baseWpm: Int,
     onSeek: (Float) -> Unit,
-    onWpmChange: (Int) -> Unit
+    onWpmChange: (Int) -> Unit,
+    alpha: Float = 1f
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
+            .graphicsLayer { this.alpha = alpha }
     ) {
         // Effective WPM and time remaining
         effectiveWpm?.let { info ->
