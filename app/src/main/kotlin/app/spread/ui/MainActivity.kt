@@ -83,7 +83,8 @@ class MainActivity : ComponentActivity() {
                                 "application/epub+zip",
                                 "application/octet-stream"
                             ))
-                        }
+                        },
+                        onRestart = viewModel::restartBook
                     )
 
                     if (showSettings) {

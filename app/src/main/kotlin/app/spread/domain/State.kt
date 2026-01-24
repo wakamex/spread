@@ -28,6 +28,15 @@ data class ReaderState(
     val hasPrevWord: Boolean
         get() = position.wordIndex > 0 || position.chapterIndex > 0
 
+    /** True when at the last word of the last chapter (book finished) */
+    val isAtEnd: Boolean
+        get() {
+            val book = book ?: return false
+            val chapter = currentChapter ?: return false
+            return position.chapterIndex == book.chapters.lastIndex &&
+                    position.wordIndex == chapter.words.lastIndex
+        }
+
     val progress: Progress
         get() {
             val book = book ?: return Progress(0f, 0f)
@@ -92,6 +101,7 @@ sealed interface Action {
     // Content
     data class BookLoaded(val book: Book) : Action
     data object BookClosed : Action
+    data object RestartBook : Action
 
     // Persistence
     data class SettingsLoaded(val settings: TimingSettings) : Action
@@ -280,6 +290,17 @@ fun reduce(state: ReaderState, action: Action): Update {
             state = state.copy(book = null, position = Position.START, playing = false, effectiveWpmInfo = null),
             effects = listOf(Effect.CancelTick)
         )
+
+        Action.RestartBook -> {
+            val book = state.book ?: return Update(state)
+            Update(
+                state = state.copy(position = Position.START, playing = false).recalculateWpm(),
+                effects = listOf(
+                    Effect.CancelTick,
+                    Effect.SaveProgress(book.id, Position.START)
+                )
+            )
+        }
 
         is Action.SettingsLoaded -> Update(
             state = state.copy(settings = action.settings).recalculateWpm()

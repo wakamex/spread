@@ -110,6 +110,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun closeBook() = dispatch(Action.BookClosed)
+    fun restartBook() = dispatch(Action.RestartBook)
 
     override fun onCleared() {
         super.onCleared()

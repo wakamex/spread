@@ -14,7 +14,7 @@ assertTrue(cleanLen <= 12)
 **Good:**
 ```kotlin
 object WordSplitConfig {
-    /** Maximum characters per chunk (fits 320dp screens at 48sp font) */
+    /** Max letters per chunk (10 + 2 hyphens = 12 display chars) */
     const val MAX_CHUNK_CHARS = 10
 }
 
@@ -36,6 +36,35 @@ const val MAX_CHUNK_CHARS = 10
 /// SYNC: Must match Kotlin Tokenizer.kt
 const MAX_CHUNK_CHARS: usize = 10;
 ```
+
+## Word Splitting
+
+### Cognitive-First, Font-Size-Adaptive
+Split words at 10 letters max (within Research.md visual span of 10-12 chars).
+With hyphens, max display is 12 chars. Adapt font size per orientation to fit.
+
+**Why not split smaller for narrow screens?**
+- Inconsistent reading speed across orientations
+- More complex display-time logic
+- 10-12 chars is within optimal cognitive range
+
+**Font size calculation:**
+```kotlin
+// To fit MAX_DISPLAY_CHARS (12) on screen:
+val availableWidthDp = screenWidthDp - paddingDp
+val charWidthDp = availableWidthDp / MAX_DISPLAY_CHARS
+val fontSp = baseFontSp * (charWidthDp / baseCharWidthDp)
+
+// Example for 320dp narrow portrait:
+// (320 - 16) / 12 = 25.3dp per char
+// 48sp * (25.3 / 29) ≈ 42sp
+```
+
+### Key Constants
+- `MAX_CHUNK_CHARS = 10`: Max letters per chunk
+- `MAX_DISPLAY_CHARS = 12`: With hyphens (10 + 2), fits 320dp screens
+- `MIN_SPLIT_LENGTH = 11`: Words < 11 chars stay whole
+- `MIN_CHUNK_CHARS = 3`: Avoid tiny fragments
 
 ## Testing
 

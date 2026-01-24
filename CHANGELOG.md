@@ -26,15 +26,26 @@
 - Base WPM adjustable 100-1000 via slider
 
 #### Morpheme-Based Word Splitting
-- **Long words (≥13 chars) automatically split** at morpheme boundaries
+- **Long words (≥11 chars) automatically split** at morpheme boundaries
 - Based on research: foveal visual span is 10-12 characters
+- Max 10 letters per chunk (12 display chars with hyphens) to fit 320dp screens
 - Split at prefix/suffix boundaries for cognitive optimization:
   - "internationalization" → `inter-` | `national-` | `-ization`
   - "electroencephalography" → `electro-` | `encephalogr-` | `-aphy`
 - **~100 common prefixes**: inter-, counter-, electro-, neuro-, psycho-, bio-, etc.
 - **~100 common suffixes**: -ization, -ological, -ability, -ment, -tion, etc.
-- Fallback chunking at 12 chars when no morpheme boundary found
+- Fallback chunking at 10 chars when no morpheme boundary found
 - Hyphen markers signal continuation to the brain
+
+#### Adaptive Font Sizing
+- **Font size adapts per screen width** to fit 12 display chars (10 letters + 2 hyphens)
+- 320dp portrait: ~42sp, 730dp landscape: 48sp (base)
+- Uses `FontSizing.calculateFontSp()` shared between ReaderScreen and previews
+- Ensures consistent chunk display across orientations
+
+#### Demo Book Restart
+- **Restart button** appears when book finishes
+- Shows "Finished!" message with option to restart from beginning
 
 #### File Import
 - **EPUB file picker** using Android Storage Access Framework
@@ -112,11 +123,12 @@
 - Brain processes "un-" + "believ" + "-able" faster than arbitrary chunks
 - Consistent chunk sizes maintain reading rhythm
 
-#### Why 12-char max chunk size?
+#### Why 10-letter / 12-display-char max chunk size?
 - Research: foveal visual span is 10-12 characters
-- Words up to 12 chars can be recognized in a single fixation
+- MAX_CHUNK_CHARS = 10 letters, plus up to 2 hyphens = 12 display chars max
+- 12 display chars fit on 320dp narrow screens with adaptive font sizing
 - Longer chunks would require micro-saccades, defeating RSVP benefits
-- Matches the MIN_SPLIT_LENGTH of 13 (words ≥13 chars get split)
+- MIN_SPLIT_LENGTH = 11 (words ≥11 chars get split)
 
 #### Why ~100 affixes instead of ML-based morpheme detection?
 - Simple prefix/suffix matching covers ~80% of long English words

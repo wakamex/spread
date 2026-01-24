@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -34,6 +35,7 @@ fun ReaderScreen(
     onWpmChange: (Int) -> Unit,
     onSettingsClick: () -> Unit,
     onOpenBook: () -> Unit = {},
+    onRestart: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val word = state.currentWord?.text ?: ""
@@ -65,20 +67,47 @@ fun ReaderScreen(
                 .weight(1f)
                 .fillMaxWidth()
         ) {
-            if (state.book != null) {
-                WordDisplay(
-                    word = word,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 48.dp) // Upper third positioning
-                )
-            } else {
-                Text(
-                    text = "No book loaded",
-                    color = Color.Gray,
-                    fontSize = 18.sp,
-                    modifier = Modifier.align(Alignment.Center)
-                )
+            when {
+                state.book == null -> {
+                    Text(
+                        text = "No book loaded",
+                        color = Color.Gray,
+                        fontSize = 18.sp,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+                state.isAtEnd && !state.playing -> {
+                    // Book finished - show restart option
+                    Column(
+                        modifier = Modifier.align(Alignment.Center),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Finished!",
+                            color = Color.White,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = onRestart,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.White.copy(alpha = 0.2f),
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Text("Restart", fontSize = 18.sp)
+                        }
+                    }
+                }
+                else -> {
+                    WordDisplay(
+                        word = word,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 48.dp) // Upper third positioning
+                    )
+                }
             }
         }
 
@@ -127,6 +156,19 @@ private fun TopBar(
     }
 }
 
+/**
+ * Calculate optimal font size to fit MAX_CHUNK_CHARS on screen.
+ * Based on screen width and orientation.
+ */
+@Composable
+private fun rememberOptimalFontSize(): androidx.compose.ui.unit.TextUnit {
+    val configuration = LocalConfiguration.current
+
+    return remember(configuration.screenWidthDp, configuration.orientation) {
+        FontSizing.calculateFontSp(configuration.screenWidthDp.toFloat()).sp
+    }
+}
+
 @Composable
 private fun WordDisplay(
     word: String,
@@ -137,8 +179,8 @@ private fun WordDisplay(
     }
 
     val orpIndex = calculateORP(word)
-    // Fixed font size - word splitting in Rust parser handles long words
-    val fontSize = 48.sp
+    // Dynamic font size based on screen width - ensures MAX_CHUNK_CHARS fits
+    val fontSize = rememberOptimalFontSize()
     val guideLineColor = Color.White.copy(alpha = 0.08f)
 
     Column(

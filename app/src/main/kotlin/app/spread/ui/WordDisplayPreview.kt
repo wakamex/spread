@@ -8,6 +8,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -33,8 +34,9 @@ fun WordDisplayTestable(
     if (word.isEmpty()) return
 
     val orpIndex = calculateORPTestable(word)
-    // Fixed font size - word splitting in Rust parser handles long words
-    val fontSize = 48.sp
+    // Dynamic font size based on screen width - ensures MAX_CHUNK_CHARS fits
+    val configuration = LocalConfiguration.current
+    val fontSize = FontSizing.calculateFontSp(configuration.screenWidthDp.toFloat()).sp
     val guideLineColor = Color.White.copy(alpha = 0.08f)
     val boundaryColor = Color.Yellow.copy(alpha = 0.7f)
 

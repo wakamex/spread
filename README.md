@@ -2,6 +2,17 @@
 
 A fast, native RSVP (Rapid Serial Visual Presentation) speed reader for Android.
 
+## Features
+
+- **ORP-Centered Display**: Words anchored at Optimal Recognition Point (~35%) for stable eye position
+- **Adaptive Font Sizing**: Font scales per screen width to fit 12 display chars on any device (320dp+)
+- **Morpheme-Based Word Splitting**: Long words split at prefix/suffix boundaries (e.g., `inter-` | `national-` | `-ization`)
+- **Adaptive Timing**: Configurable delays for punctuation and word length with presets (Uniform, Natural, Comprehension)
+- **Effective WPM Display**: O(1) calculation shows actual reading pace accounting for all timing adjustments
+- **Progress Persistence**: Reading position saved per book using Room database
+- **EPUB Support**: Native Rust parser for fast, memory-efficient parsing
+- **Demo Book**: Built-in content for first-time users with restart option
+
 ## Build Requirements
 
 - **JDK**: 17 or 21 (JDK 21 requires AGP 8.3+)

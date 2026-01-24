@@ -11,12 +11,20 @@ package app.spread.domain
 /**
  * Word splitting constants.
  * SYNC: These values must match rust/src/tokenizer.rs
+ *
+ * Strategy: Split at cognitive max (12 chars per research), then adjust
+ * font size per orientation so chunks always fit on screen.
  */
 object WordSplitConfig {
     /** Split words at or above this length */
     const val MIN_SPLIT_LENGTH = 11
 
-    /** Maximum characters per chunk (fits 320dp screens at 48sp font) */
+    /**
+     * Maximum alphanumeric characters per chunk.
+     * With hyphens (up to 2), max display is 12 chars - fits 320dp screens.
+     * Within research-backed visual span of 10-12 chars.
+     * SYNC: Must match rust/src/tokenizer.rs MAX_CHUNK_CHARS
+     */
     const val MAX_CHUNK_CHARS = 10
 
     /** Minimum chunk size to avoid tiny fragments */

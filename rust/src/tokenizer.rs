@@ -2,9 +2,9 @@
 
 use crate::types::{ChapterStats, LengthBucket, Punctuation, Word};
 
-/// Maximum characters per chunk for optimal cognitive processing.
-/// Based on research: visual span is 10-12 chars. We use 10 to ensure
-/// words fit on narrow portrait screens (320dp) at 48sp font size.
+/// Maximum alphanumeric characters per chunk.
+/// With hyphens (up to 2), max display is 12 chars - fits 320dp screens.
+/// Within research-backed visual span of 10-12 chars.
 /// SYNC: Must match Kotlin Tokenizer.kt MAX_CHUNK_CHARS
 const MAX_CHUNK_CHARS: usize = 10;
 
@@ -312,10 +312,14 @@ mod tests {
 
     #[test]
     fn test_split_long_word_with_suffix() {
-        // "unbelievable" is 12 chars, under MIN_SPLIT_LENGTH (13), so not split
+        // "unbelievable" is 12 chars, >= MIN_SPLIT_LENGTH (11), so it IS split
         let chunks = split_long_word("unbelievable");
-        assert_eq!(chunks.len(), 1);
-        assert_eq!(chunks[0], "unbelievable");
+        assert!(chunks.len() >= 2, "12-char word should be split");
+        // Verify chunks fit MAX_CHUNK_CHARS
+        for chunk in &chunks {
+            let clean_len: usize = chunk.chars().filter(|c| c.is_alphabetic()).count();
+            assert!(clean_len <= MAX_CHUNK_CHARS, "Chunk '{}' exceeds limit", chunk);
+        }
     }
 
     #[test]

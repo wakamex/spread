@@ -39,3 +39,6 @@ rust/target/
 
 # Claude
 .claude/
+
+# images
+*.png
