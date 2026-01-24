@@ -98,6 +98,8 @@ sealed interface Action {
     data class SetVeryLongWordExtra(val ms: Int) : Action
     data class SetSplitChunkMultiplier(val multiplier: Float) : Action
     data class SetAnchorPosition(val percent: Float) : Action
+    data class SetVerticalPositionPortrait(val percent: Float) : Action
+    data class SetVerticalPositionLandscape(val percent: Float) : Action
     data class ApplyPreset(val preset: TimingSettings) : Action
 
     // Content
@@ -284,6 +286,22 @@ fun reduce(state: ReaderState, action: Action): Update {
 
         is Action.SetAnchorPosition -> {
             val newSettings = state.settings.copy(anchorPositionPercent = action.percent.coerceIn(0.3f, 0.5f))
+            Update(
+                state = state.copy(settings = newSettings),
+                effects = listOf(Effect.SaveSettings(newSettings))
+            )
+        }
+
+        is Action.SetVerticalPositionPortrait -> {
+            val newSettings = state.settings.copy(verticalPositionPortrait = action.percent.coerceIn(0.1f, 0.5f))
+            Update(
+                state = state.copy(settings = newSettings),
+                effects = listOf(Effect.SaveSettings(newSettings))
+            )
+        }
+
+        is Action.SetVerticalPositionLandscape -> {
+            val newSettings = state.settings.copy(verticalPositionLandscape = action.percent.coerceIn(0.1f, 0.5f))
             Update(
                 state = state.copy(settings = newSettings),
                 effects = listOf(Effect.SaveSettings(newSettings))

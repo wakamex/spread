@@ -24,6 +24,8 @@ class SettingsRepository(private val context: Context) {
         val VERY_LONG_WORD_EXTRA = intPreferencesKey("very_long_word_extra_ms")
         val SPLIT_CHUNK_MULTIPLIER = floatPreferencesKey("split_chunk_multiplier")
         val ANCHOR_POSITION = floatPreferencesKey("anchor_position_percent")
+        val VERTICAL_POSITION_PORTRAIT = floatPreferencesKey("vertical_position_portrait")
+        val VERTICAL_POSITION_LANDSCAPE = floatPreferencesKey("vertical_position_landscape")
     }
 
     val settings: Flow<TimingSettings> = context.dataStore.data
@@ -44,7 +46,9 @@ class SettingsRepository(private val context: Context) {
                 longWordExtraMs = prefs[Keys.LONG_WORD_EXTRA] ?: TimingSettings.Default.longWordExtraMs,
                 veryLongWordExtraMs = prefs[Keys.VERY_LONG_WORD_EXTRA] ?: TimingSettings.Default.veryLongWordExtraMs,
                 splitChunkMultiplier = prefs[Keys.SPLIT_CHUNK_MULTIPLIER] ?: TimingSettings.Default.splitChunkMultiplier,
-                anchorPositionPercent = prefs[Keys.ANCHOR_POSITION] ?: TimingSettings.Default.anchorPositionPercent
+                anchorPositionPercent = prefs[Keys.ANCHOR_POSITION] ?: TimingSettings.Default.anchorPositionPercent,
+                verticalPositionPortrait = prefs[Keys.VERTICAL_POSITION_PORTRAIT] ?: TimingSettings.Default.verticalPositionPortrait,
+                verticalPositionLandscape = prefs[Keys.VERTICAL_POSITION_LANDSCAPE] ?: TimingSettings.Default.verticalPositionLandscape
             )
         }
 
@@ -59,6 +63,8 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.VERY_LONG_WORD_EXTRA] = settings.veryLongWordExtraMs
             prefs[Keys.SPLIT_CHUNK_MULTIPLIER] = settings.splitChunkMultiplier
             prefs[Keys.ANCHOR_POSITION] = settings.anchorPositionPercent
+            prefs[Keys.VERTICAL_POSITION_PORTRAIT] = settings.verticalPositionPortrait
+            prefs[Keys.VERTICAL_POSITION_LANDSCAPE] = settings.verticalPositionLandscape
         }
     }
 }

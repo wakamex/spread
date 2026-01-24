@@ -67,7 +67,9 @@ class TimingTest {
             longWordExtraMs = 40,
             veryLongWordExtraMs = 60,
             splitChunkMultiplier = 1.0f,
-            anchorPositionPercent = 0.5f
+            anchorPositionPercent = 0.5f,
+            verticalPositionPortrait = 0.22f,
+            verticalPositionLandscape = 0.38f
         )
 
         val result = calculateEffectiveWpm(stats, settings)

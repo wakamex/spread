@@ -26,7 +26,18 @@ data class TimingSettings(
      * 0.5 = center, 0.42 = left of center (recommended for ORP asymmetry).
      * Lower values give more room for the right side of words.
      */
-    val anchorPositionPercent: Float
+    val anchorPositionPercent: Float,
+    /**
+     * Vertical position of text in portrait mode as fraction of screen height.
+     * 0.0 = top, 0.5 = center, 1.0 = bottom.
+     * Upper quarter (0.20-0.25) reduces neck strain from looking down at phone.
+     */
+    val verticalPositionPortrait: Float,
+    /**
+     * Vertical position of text in landscape mode as fraction of screen height.
+     * Landscape screens are shorter, so position closer to center (0.35-0.40).
+     */
+    val verticalPositionLandscape: Float
 ) {
     val baseDelayMs: Int get() = 60_000 / baseWpm
 
@@ -35,6 +46,10 @@ data class TimingSettings(
         const val DEFAULT_ANCHOR_POSITION = 0.42f
         /** Default split chunk multiplier: 30% extra time */
         const val DEFAULT_SPLIT_CHUNK_MULTIPLIER = 1.3f
+        /** Default vertical position in portrait: upper quarter */
+        const val DEFAULT_VERTICAL_PORTRAIT = 0.22f
+        /** Default vertical position in landscape: closer to center */
+        const val DEFAULT_VERTICAL_LANDSCAPE = 0.38f
 
         val Uniform = TimingSettings(
             baseWpm = 300,
@@ -45,7 +60,9 @@ data class TimingSettings(
             longWordExtraMs = 0,
             veryLongWordExtraMs = 0,
             splitChunkMultiplier = 1.0f,
-            anchorPositionPercent = DEFAULT_ANCHOR_POSITION
+            anchorPositionPercent = DEFAULT_ANCHOR_POSITION,
+            verticalPositionPortrait = DEFAULT_VERTICAL_PORTRAIT,
+            verticalPositionLandscape = DEFAULT_VERTICAL_LANDSCAPE
         )
 
         val Natural = TimingSettings(
@@ -57,7 +74,9 @@ data class TimingSettings(
             longWordExtraMs = 40,
             veryLongWordExtraMs = 60,
             splitChunkMultiplier = DEFAULT_SPLIT_CHUNK_MULTIPLIER,
-            anchorPositionPercent = DEFAULT_ANCHOR_POSITION
+            anchorPositionPercent = DEFAULT_ANCHOR_POSITION,
+            verticalPositionPortrait = DEFAULT_VERTICAL_PORTRAIT,
+            verticalPositionLandscape = DEFAULT_VERTICAL_LANDSCAPE
         )
 
         val Comprehension = TimingSettings(
@@ -69,7 +88,9 @@ data class TimingSettings(
             longWordExtraMs = 60,
             veryLongWordExtraMs = 100,
             splitChunkMultiplier = 1.5f,
-            anchorPositionPercent = DEFAULT_ANCHOR_POSITION
+            anchorPositionPercent = DEFAULT_ANCHOR_POSITION,
+            verticalPositionPortrait = DEFAULT_VERTICAL_PORTRAIT,
+            verticalPositionLandscape = DEFAULT_VERTICAL_LANDSCAPE
         )
 
         val Default = Natural

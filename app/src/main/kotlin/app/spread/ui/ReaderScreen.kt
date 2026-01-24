@@ -61,12 +61,22 @@ fun ReaderScreen(
             onSettingsClick = onSettingsClick
         )
 
-        // Word display - positioned in upper third for ergonomic focus
-        Box(
+        // Word display - vertical position adapts to orientation for ergonomics
+        val configuration = LocalConfiguration.current
+        val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        val verticalPosition = if (isLandscape) {
+            state.settings.verticalPositionLandscape
+        } else {
+            state.settings.verticalPositionPortrait
+        }
+
+        BoxWithConstraints(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
         ) {
+            val verticalOffsetDp = (maxHeight * verticalPosition)
+
             when {
                 state.book == null -> {
                     Text(
@@ -106,7 +116,7 @@ fun ReaderScreen(
                         anchorPositionPercent = state.settings.anchorPositionPercent,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 48.dp) // Upper third positioning
+                            .padding(top = verticalOffsetDp)
                     )
                 }
             }

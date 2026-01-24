@@ -61,6 +61,13 @@
 - Configurable via `splitChunkMultiplier` setting (1.0-2.0)
 - Counted in effective WPM calculation
 
+#### Orientation-Adaptive Vertical Positioning
+- **Vertical position adapts to screen orientation** for ergonomic comfort
+- Portrait mode: 22% from top (upper quarter, reduces neck strain from looking down)
+- Landscape mode: 38% from top (closer to center, screen is shorter)
+- Configurable via `verticalPositionPortrait` and `verticalPositionLandscape` settings
+- Based on ergonomic research for mobile device viewing angles
+
 #### File Import
 - **EPUB file picker** using Android Storage Access Framework
 - Reads directly from content URI (no file copying needed)

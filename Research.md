@@ -13,4 +13,37 @@ currentDuration = baseDuration * 2.0
 nextFrameDelay = 50 // Insert 50ms blank frame AFTER this word
 }
 ```
-This 50ms blank frame clears the retinal buffer and allows the visual cortex to complete the "T1 consolidation" phase before T2 arrives, preventing the blink.8. ConclusionOptimizing RSVP is an exercise in bandwidth matching. By implementing 35% ORP alignment (shifted slightly left on screen), Safety Orange anchors on dark gray floors, Zipfian pacing with "Sight Word" reducers, and Morphological Splitting, we align the digital interface with the biological realities of the human cortex. The resulting system does not just flash words; it injects information directly into the stream of consciousness.
+This 50ms blank frame clears the retinal buffer and allows the visual cortex to complete the "T1 consolidation" phase before T2 arrives, preventing the blink.8. Vertical Positioning: Orientation-Adaptive Ergonomics
+
+The vertical placement of text on screen significantly impacts reading comfort and neck strain, particularly on mobile devices where users typically look down at the screen.
+
+8.1 Portrait Mode Positioning
+
+In portrait orientation, mobile devices are typically held at chest or stomach level, requiring users to look downward. Ergonomic research indicates:
+
+- The natural line of sight falls on the **upper third** of the screen
+- Placing text in the **upper 20-25%** of the display area reduces the downward gaze angle
+- This minimizes cervical spine flexion and associated neck strain
+
+Recommended default: **22% from top** (verticalPositionPortrait = 0.22)
+
+8.2 Landscape Mode Positioning
+
+In landscape orientation, the screen height is reduced while width increases. The same absolute position would place text proportionally higher:
+
+- A shorter screen means "upper third" positioning becomes cramped
+- Text should move closer to **vertical center** (35-40% from top)
+- This maintains comfortable viewing without forcing eyes to the very top edge
+
+Recommended default: **38% from top** (verticalPositionLandscape = 0.38)
+
+8.3 Implementation
+
+The vertical position should be expressed as a fraction of available display height:
+- 0.0 = top edge
+- 0.5 = center
+- 1.0 = bottom edge
+
+Portrait and landscape positions should be independent settings, allowing users to optimize for their specific device geometry and holding posture.
+
+9. ConclusionOptimizing RSVP is an exercise in bandwidth matching. By implementing 35% ORP alignment (shifted slightly left on screen), Safety Orange anchors on dark gray floors, Zipfian pacing with "Sight Word" reducers, and Morphological Splitting, we align the digital interface with the biological realities of the human cortex. The resulting system does not just flash words; it injects information directly into the stream of consciousness.
