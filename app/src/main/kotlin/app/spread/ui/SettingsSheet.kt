@@ -94,6 +94,33 @@ fun SettingsSheet(
             Divider(color = Color.White.copy(alpha = 0.1f))
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Display settings
+            Text(
+                text = "Display",
+                color = Color.White.copy(alpha = 0.7f),
+                fontSize = 14.sp
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            SettingSlider(
+                label = "Max Chunk Size",
+                value = settings.maxDisplayChars.toFloat(),
+                valueRange = 10f..24f,
+                valueLabel = "${settings.maxDisplayChars} chars",
+                onValueChange = { onSettingsChange(Action.SetMaxDisplayChars(it.roundToInt())) }
+            )
+
+            Text(
+                text = "Larger = fewer word splits, smaller font",
+                color = Color.White.copy(alpha = 0.4f),
+                fontSize = 12.sp,
+                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+            Divider(color = Color.White.copy(alpha = 0.1f))
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Punctuation delays
             Text(
                 text = "Punctuation Pauses",

@@ -2,7 +2,7 @@
 //!
 //! These functions are called from Kotlin via JNI.
 
-use crate::epub::parse_epub;
+use crate::epub::{parse_epub, parse_epub_with_config};
 use crate::types::{Book, Chapter, ChapterStats, Word};
 use jni::objects::{JByteArray, JClass, JObject, JString, JValue};
 use jni::sys::{jobject, jstring};
@@ -28,6 +28,38 @@ pub extern "system" fn Java_app_spread_data_NativeParser_parseEpub<'local>(
         Ok(b) => b,
         Err(e) => {
             // Log error (in real app, would use Android logging)
+            eprintln!("EPUB parse error: {}", e);
+            return std::ptr::null_mut();
+        }
+    };
+
+    // Convert to Java objects
+    match book_to_jobject(&mut env, &book) {
+        Ok(obj) => obj.into_raw(),
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
+/// Parse an EPUB file with configurable chunk size.
+///
+/// Kotlin signature: external fun parseEpubWithConfig(data: ByteArray, maxChunkChars: Int): Book?
+#[no_mangle]
+pub extern "system" fn Java_app_spread_data_NativeParser_parseEpubWithConfig<'local>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    data: JByteArray<'local>,
+    max_chunk_chars: jni::sys::jint,
+) -> jobject {
+    // Convert Java byte array to Rust slice
+    let data_vec = match env.convert_byte_array(&data) {
+        Ok(v) => v,
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    // Parse EPUB with config
+    let book = match parse_epub_with_config(&data_vec, max_chunk_chars as usize) {
+        Ok(b) => b,
+        Err(e) => {
             eprintln!("EPUB parse error: {}", e);
             return std::ptr::null_mut();
         }

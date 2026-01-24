@@ -18,6 +18,13 @@ object NativeParser {
     external fun parseEpub(data: ByteArray): NativeBook?
 
     /**
+     * Parse an EPUB file with configurable chunk size.
+     * @param maxChunkChars Maximum alphanumeric characters per word chunk (10-22)
+     * Returns null on parse failure.
+     */
+    external fun parseEpubWithConfig(data: ByteArray, maxChunkChars: Int): NativeBook?
+
+    /**
      * Get the native library version.
      */
     external fun getVersion(): String

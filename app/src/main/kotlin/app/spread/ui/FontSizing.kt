@@ -1,14 +1,16 @@
 package app.spread.ui
 
-import app.spread.domain.WordSplitConfig
+import app.spread.domain.TimingSettings
 
 /**
  * Font size calculation for RSVP word display.
  *
- * Strategy: Calculate optimal font size to fit displayed text on screen.
- * Chunks may have MAX_CHUNK_CHARS letters plus up to 2 hyphens (leading/trailing).
- * This ensures consistent reading speed across orientations while maximizing
- * readability within screen constraints.
+ * Strategy: Calculate optimal font size to fit displayed text on screen,
+ * accounting for off-center anchor position. With ORP at ~25% of word
+ * and anchor at 42% of screen, the right side of the word extends further
+ * than center-aligned text would.
+ *
+ * No minimum font size - user's maxDisplayChars setting takes priority.
  */
 object FontSizing {
     /** Base font size when screen is wide enough */
@@ -18,37 +20,52 @@ object FontSizing {
     const val BASE_CHAR_WIDTH_DP = 29f
 
     /**
-     * Horizontal padding buffer from screen edges.
-     * Accounts for system insets, font metric variations, and safety margin.
-     * Conservative value ensures text never clips on any device.
+     * Edge padding buffer from screen edges.
+     * Accounts for system insets and font metric variations.
      */
-    const val HORIZONTAL_PADDING_DP = 32f
-
-    /** Minimum acceptable font size for readability */
-    const val MIN_FONT_SP = 36f
+    const val EDGE_PADDING_DP = 16f
 
     /**
-     * Maximum display characters: MAX_CHUNK_CHARS letters + 2 hyphens.
-     * Chunks like "-revolution-" have leading and trailing hyphens.
+     * ORP position as fraction of word length.
+     * For 12-char words, ORP is at index 3 = 25% into word.
+     * This means 75% of the word extends RIGHT of the ORP.
      */
-    const val MAX_DISPLAY_CHARS = WordSplitConfig.MAX_CHUNK_CHARS + 2
+    private const val ORP_FRACTION = 0.25f
 
     /**
-     * Calculate optimal font size to fit MAX_DISPLAY_CHARS on the given screen width.
+     * Calculate optimal font size to fit maxDisplayChars on the given screen width,
+     * accounting for anchor position and ORP offset.
      *
      * @param screenWidthDp Screen width in dp
-     * @return Font size in sp, capped between MIN_FONT_SP and BASE_FONT_SP
+     * @param maxDisplayChars Maximum characters to fit (from settings)
+     * @param anchorPosition Anchor position as fraction of screen width (default 0.42)
+     * @return Font size in sp, scaled to fit configured chars
      */
-    fun calculateFontSp(screenWidthDp: Float): Float {
-        val availableWidthDp = screenWidthDp - HORIZONTAL_PADDING_DP
-        val requiredCharWidthDp = availableWidthDp / MAX_DISPLAY_CHARS
+    fun calculateFontSp(
+        screenWidthDp: Float,
+        maxDisplayChars: Int = TimingSettings.DEFAULT_MAX_DISPLAY_CHARS,
+        anchorPosition: Float = TimingSettings.DEFAULT_ANCHOR_POSITION
+    ): Float {
+        // Calculate available space on each side of anchor
+        val leftOfAnchorDp = (screenWidthDp * anchorPosition) - EDGE_PADDING_DP
+        val rightOfAnchorDp = (screenWidthDp * (1 - anchorPosition)) - EDGE_PADDING_DP
+
+        // Word extends: ORP_FRACTION left, (1 - ORP_FRACTION) right
+        // Constraint: leftChars must fit in leftSpace, rightChars must fit in rightSpace
+        // maxCharWidth = min(leftSpace / leftChars, rightSpace / rightChars)
+        val leftChars = maxDisplayChars * ORP_FRACTION
+        val rightChars = maxDisplayChars * (1 - ORP_FRACTION)
+
+        val maxCharWidthFromLeft = if (leftChars > 0) leftOfAnchorDp / leftChars else Float.MAX_VALUE
+        val maxCharWidthFromRight = if (rightChars > 0) rightOfAnchorDp / rightChars else Float.MAX_VALUE
+
+        val requiredCharWidthDp = minOf(maxCharWidthFromLeft, maxCharWidthFromRight)
 
         // Scale font proportionally to char width
         val scaledFontSp = BASE_FONT_SP * (requiredCharWidthDp / BASE_CHAR_WIDTH_DP)
 
         // Cap at base size (don't make font larger than 48sp)
-        // and ensure minimum readability
-        return scaledFontSp.coerceIn(MIN_FONT_SP, BASE_FONT_SP)
+        return scaledFontSp.coerceAtMost(BASE_FONT_SP)
     }
 
     /**
@@ -67,13 +84,27 @@ object FontSizing {
     }
 
     /**
-     * Verify that MAX_DISPLAY_CHARS fits on screen at calculated font size.
+     * Verify that maxDisplayChars fits on screen at calculated font size.
      * Returns true if text will fit without clipping.
      */
-    fun verifyFit(screenWidthDp: Float): Boolean {
-        val fontSp = calculateFontSp(screenWidthDp)
-        val textWidthDp = totalWidthDp(MAX_DISPLAY_CHARS, fontSp)
-        val availableWidthDp = screenWidthDp - HORIZONTAL_PADDING_DP
-        return textWidthDp <= availableWidthDp
+    fun verifyFit(
+        screenWidthDp: Float,
+        maxDisplayChars: Int = TimingSettings.DEFAULT_MAX_DISPLAY_CHARS,
+        anchorPosition: Float = TimingSettings.DEFAULT_ANCHOR_POSITION
+    ): Boolean {
+        val fontSp = calculateFontSp(screenWidthDp, maxDisplayChars, anchorPosition)
+        val charWidthDp = charWidthDpAtFontSp(fontSp)
+
+        // Check both sides fit
+        val leftChars = maxDisplayChars * ORP_FRACTION
+        val rightChars = maxDisplayChars * (1 - ORP_FRACTION)
+
+        val leftOfAnchorDp = (screenWidthDp * anchorPosition) - EDGE_PADDING_DP
+        val rightOfAnchorDp = (screenWidthDp * (1 - anchorPosition)) - EDGE_PADDING_DP
+
+        val leftFits = leftChars * charWidthDp <= leftOfAnchorDp
+        val rightFits = rightChars * charWidthDp <= rightOfAnchorDp
+
+        return leftFits && rightFits
     }
 }

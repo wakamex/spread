@@ -38,7 +38,7 @@ class StateTest {
     @Test
     fun `BookLoaded action sets book and resets position`() {
         val book = createTestBook()
-        val (newState, _) = reduce(ReaderState.Initial, Action.BookLoaded(book))
+        val (newState, _) = reduce(ReaderState.Initial, Action.BookLoaded(book, BookSource.Demo))
 
         assertEquals(book, newState.book)
         assertEquals(Position.START, newState.position)

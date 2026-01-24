@@ -37,7 +37,14 @@ data class TimingSettings(
      * Vertical position of text in landscape mode as fraction of screen height.
      * Landscape screens are shorter, so position closer to center (0.35-0.40).
      */
-    val verticalPositionLandscape: Float
+    val verticalPositionLandscape: Float,
+    /**
+     * Maximum display characters per chunk (including hyphens).
+     * Affects word splitting threshold and font size calculation.
+     * Higher values = fewer splits but smaller font on narrow screens.
+     * Range: 10-24, default 12.
+     */
+    val maxDisplayChars: Int
 ) {
     val baseDelayMs: Int get() = 60_000 / baseWpm
 
@@ -50,6 +57,8 @@ data class TimingSettings(
         const val DEFAULT_VERTICAL_PORTRAIT = 0.22f
         /** Default vertical position in landscape: closer to center */
         const val DEFAULT_VERTICAL_LANDSCAPE = 0.38f
+        /** Default max display chars (10 letters + 2 hyphens) */
+        const val DEFAULT_MAX_DISPLAY_CHARS = 12
 
         val Uniform = TimingSettings(
             baseWpm = 300,
@@ -62,7 +71,8 @@ data class TimingSettings(
             splitChunkMultiplier = 1.0f,
             anchorPositionPercent = DEFAULT_ANCHOR_POSITION,
             verticalPositionPortrait = DEFAULT_VERTICAL_PORTRAIT,
-            verticalPositionLandscape = DEFAULT_VERTICAL_LANDSCAPE
+            verticalPositionLandscape = DEFAULT_VERTICAL_LANDSCAPE,
+            maxDisplayChars = DEFAULT_MAX_DISPLAY_CHARS
         )
 
         val Natural = TimingSettings(
@@ -76,7 +86,8 @@ data class TimingSettings(
             splitChunkMultiplier = DEFAULT_SPLIT_CHUNK_MULTIPLIER,
             anchorPositionPercent = DEFAULT_ANCHOR_POSITION,
             verticalPositionPortrait = DEFAULT_VERTICAL_PORTRAIT,
-            verticalPositionLandscape = DEFAULT_VERTICAL_LANDSCAPE
+            verticalPositionLandscape = DEFAULT_VERTICAL_LANDSCAPE,
+            maxDisplayChars = DEFAULT_MAX_DISPLAY_CHARS
         )
 
         val Comprehension = TimingSettings(
@@ -90,7 +101,8 @@ data class TimingSettings(
             splitChunkMultiplier = 1.5f,
             anchorPositionPercent = DEFAULT_ANCHOR_POSITION,
             verticalPositionPortrait = DEFAULT_VERTICAL_PORTRAIT,
-            verticalPositionLandscape = DEFAULT_VERTICAL_LANDSCAPE
+            verticalPositionLandscape = DEFAULT_VERTICAL_LANDSCAPE,
+            maxDisplayChars = DEFAULT_MAX_DISPLAY_CHARS
         )
 
         val Default = Natural

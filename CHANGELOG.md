@@ -38,10 +38,23 @@
 - Hyphen markers signal continuation to the brain
 
 #### Adaptive Font Sizing
-- **Font size adapts per screen width** to fit 12 display chars (10 letters + 2 hyphens)
+- **Font size adapts per screen width** to fit configured max display chars
+- Default: 12 display chars (10 letters + 2 hyphens) based on cognitive research
 - 320dp portrait: ~42sp, 730dp landscape: 48sp (base)
 - Uses `FontSizing.calculateFontSp()` shared between ReaderScreen and previews
 - Ensures consistent chunk display across orientations
+
+#### Configurable Max Chunk Size
+- **`maxDisplayChars` setting** controls both font sizing AND word splitting threshold (10-24, default 12)
+- Higher values = fewer word splits but smaller font on narrow screens
+- Lower values = more splits but larger, more readable font
+- **Dynamic re-parsing**: Changing chunk size re-parses the book in real-time
+  - EPUB bytes stored in memory for instant re-parsing (~200ms for large books)
+  - Position preserved via character offset mapping
+  - Demo book regenerated with new chunk size
+- Font automatically scales to fit the configured max on any screen width
+- Settings loaded before demo book to avoid visual jutter on startup
+- Persisted via DataStore
 
 #### Demo Book Restart
 - **Restart button** appears when book finishes
@@ -144,12 +157,18 @@
 - Brain processes "un-" + "believ" + "-able" faster than arbitrary chunks
 - Consistent chunk sizes maintain reading rhythm
 
-#### Why 10-letter / 12-display-char max chunk size?
+#### Why 10-letter / 12-display-char default chunk size?
 - Research: foveal visual span is 10-12 characters
-- MAX_CHUNK_CHARS = 10 letters, plus up to 2 hyphens = 12 display chars max
+- DEFAULT_MAX_CHUNK_CHARS = 10 letters, plus up to 2 hyphens = 12 display chars max
 - 12 display chars fit on 320dp narrow screens with adaptive font sizing
 - Longer chunks would require micro-saccades, defeating RSVP benefits
-- MIN_SPLIT_LENGTH = 11 (words ≥11 chars get split)
+- Split threshold = maxChunkChars + 1 (configurable 10-24)
+
+#### Why re-parse on chunk size change instead of caching multiple versions?
+- Memory efficient: Only store EPUB bytes once (~200KB-2MB)
+- Re-parsing is fast: ~200ms for 135K word book (Pride & Prejudice benchmark)
+- Position mapping via character offset preserves reading progress
+- Keeps architecture simple: one code path for all chunk sizes
 
 #### Why ~100 affixes instead of ML-based morpheme detection?
 - Simple prefix/suffix matching covers ~80% of long English words

@@ -2,7 +2,8 @@ package app.spread.ui
 
 import android.graphics.Typeface
 import android.text.TextPaint
-import app.spread.domain.WordSplitConfig.MAX_CHUNK_CHARS
+import app.spread.domain.TimingSettings
+import app.spread.domain.WordSplitConfig.DEFAULT_MAX_CHUNK_CHARS
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
@@ -10,6 +11,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+
+private val DEFAULT_MAX_DISPLAY_CHARS = TimingSettings.DEFAULT_MAX_DISPLAY_CHARS
 
 /**
  * Tests that verify text actually fits on screen using real Android text measurement.
@@ -64,8 +67,8 @@ class TextMeasurementTest {
     @Test
     fun `12 display chars fit on all screen widths at calculated font size`() {
         // Worst case: 10 letters + 2 hyphens = 12 display chars
-        val testString = "-revolution-"  // 12 chars - MAX_DISPLAY_CHARS
-        assertEquals("Test string should be MAX_DISPLAY_CHARS", FontSizing.MAX_DISPLAY_CHARS, testString.length)
+        val testString = "-revolution-"  // 12 chars - DEFAULT_MAX_DISPLAY_CHARS
+        assertEquals("Test string should be DEFAULT_MAX_DISPLAY_CHARS", DEFAULT_MAX_DISPLAY_CHARS, testString.length)
 
         val failures = mutableListOf<String>()
 
@@ -76,7 +79,7 @@ class TextMeasurementTest {
             val textWidthPx = paint.measureText(testString)
             val textWidthDp = textWidthPx / ROBOLECTRIC_DENSITY
 
-            val availableDp = screenWidthDp - FontSizing.HORIZONTAL_PADDING_DP
+            val availableDp = screenWidthDp - FontSizing.EDGE_PADDING_DP
 
             println("$name: font=${fontSp}sp, text=${textWidthDp}dp, available=${availableDp}dp")
 
@@ -105,7 +108,7 @@ class TextMeasurementTest {
         val fontSp = FontSizing.calculateFontSp(narrowScreenDp)
         paint.textSize = fontSp * ROBOLECTRIC_DENSITY
 
-        val availableDp = narrowScreenDp - FontSizing.HORIZONTAL_PADDING_DP
+        val availableDp = narrowScreenDp - FontSizing.EDGE_PADDING_DP
         val failures = mutableListOf<String>()
 
         for (chunk in worstCaseChunks) {
@@ -162,7 +165,7 @@ class TextMeasurementTest {
         val fontSp = FontSizing.calculateFontSp(narrowScreenDp)
         paint.textSize = fontSp * ROBOLECTRIC_DENSITY
 
-        val availableDp = narrowScreenDp - FontSizing.HORIZONTAL_PADDING_DP
+        val availableDp = narrowScreenDp - FontSizing.EDGE_PADDING_DP
         val failures = mutableListOf<String>()
 
         println("'counterrevolutionary' tokenized at ${fontSp}sp for ${narrowScreenDp}dp screen:")

@@ -5,7 +5,7 @@
 //! - content.opf (or similar) -> metadata + spine (reading order) + manifest (file list)
 //! - XHTML files -> actual chapter content
 
-use crate::tokenizer::create_chapter;
+use crate::tokenizer::{create_chapter_with_config, DEFAULT_MAX_CHUNK_CHARS};
 use crate::types::{Book, BookMetadata, BookStats};
 use quick_xml::events::Event;
 use quick_xml::Reader;
@@ -30,8 +30,11 @@ pub enum EpubError {
     InvalidStructure(String),
 }
 
-/// Parse an EPUB file from bytes
-pub fn parse_epub(data: &[u8]) -> Result<Book, EpubError> {
+/// Parse an EPUB file from bytes with configurable chunk size.
+///
+/// `max_chunk_chars` controls max letters per chunk (default 10, range 10-22).
+/// maxDisplayChars from settings should be converted: max_chunk_chars = maxDisplayChars - 2
+pub fn parse_epub_with_config(data: &[u8], max_chunk_chars: usize) -> Result<Book, EpubError> {
     let cursor = Cursor::new(data);
     let mut archive = ZipArchive::new(cursor)?;
 
@@ -68,7 +71,12 @@ pub fn parse_epub(data: &[u8]) -> Result<Book, EpubError> {
                     let title = extract_title_from_xhtml(&content)
                         .unwrap_or_else(|| format!("Chapter {}", index + 1));
 
-                    chapters.push(create_chapter(index as u32, title, &paragraphs));
+                    chapters.push(create_chapter_with_config(
+                        index as u32,
+                        title,
+                        &paragraphs,
+                        max_chunk_chars,
+                    ));
                 }
             }
         }
@@ -81,6 +89,11 @@ pub fn parse_epub(data: &[u8]) -> Result<Book, EpubError> {
         chapters,
         stats,
     })
+}
+
+/// Parse an EPUB file from bytes with default chunk size.
+pub fn parse_epub(data: &[u8]) -> Result<Book, EpubError> {
+    parse_epub_with_config(data, DEFAULT_MAX_CHUNK_CHARS)
 }
 
 fn read_container(archive: &mut ZipArchive<Cursor<&[u8]>>) -> Result<String, EpubError> {

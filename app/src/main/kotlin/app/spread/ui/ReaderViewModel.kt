@@ -5,7 +5,9 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.spread.data.BookRepository
+import app.spread.data.NativeParser
 import app.spread.data.SettingsRepository
+import app.spread.data.toDomain
 import app.spread.domain.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -21,6 +23,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     private var tickerJob: Job? = null
     private var saveSettingsJob: Job? = null
     private var saveProgressJob: Job? = null
+    private var reparseJob: Job? = null
 
     init {
         // Load saved settings on startup
@@ -42,6 +45,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
                 Effect.CancelTick -> cancelTick()
                 is Effect.SaveProgress -> saveProgress(effect.bookId, effect.position)
                 is Effect.SaveSettings -> saveSettings(effect.settings)
+                is Effect.ReparseBook -> reparseBook(effect)
             }
         }
     }
@@ -61,6 +65,33 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         saveProgressJob = viewModelScope.launch {
             delay(500) // Wait 500ms after last change
             bookRepository.saveProgress(bookId.value, position)
+        }
+    }
+
+    private fun reparseBook(effect: Effect.ReparseBook) {
+        // Cancel any pending re-parse
+        reparseJob?.cancel()
+        reparseJob = viewModelScope.launch(Dispatchers.IO) {
+            val newBook = when (val source = effect.source) {
+                is BookSource.Epub -> {
+                    NativeParser.parseEpubWithConfig(source.bytes, effect.maxChunkChars)
+                        ?.toDomain(source.bookId)
+                }
+                is BookSource.Demo -> {
+                    createDemoBook(effect.maxChunkChars)
+                }
+            }
+
+            if (newBook != null) {
+                val newPosition = mapPositionAfterReparse(
+                    effect.currentPosition,
+                    effect.currentBook,
+                    newBook
+                )
+                withContext(Dispatchers.Main) {
+                    dispatch(Action.BookReparsed(newBook, newPosition))
+                }
+            }
         }
     }
 
@@ -89,8 +120,8 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     fun jumpToChapter(index: Int) = dispatch(Action.JumpToChapter(index))
     fun seekChapter(fraction: Float) = dispatch(Action.SeekChapter(fraction))
 
-    fun loadBook(book: Book, fileUri: Uri? = null) {
-        dispatch(Action.BookLoaded(book))
+    fun loadBook(book: Book, source: BookSource, fileUri: Uri? = null) {
+        dispatch(Action.BookLoaded(book, source))
 
         // Save to library and restore progress
         viewModelScope.launch {

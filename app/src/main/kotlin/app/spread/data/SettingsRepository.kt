@@ -26,6 +26,7 @@ class SettingsRepository(private val context: Context) {
         val ANCHOR_POSITION = floatPreferencesKey("anchor_position_percent")
         val VERTICAL_POSITION_PORTRAIT = floatPreferencesKey("vertical_position_portrait")
         val VERTICAL_POSITION_LANDSCAPE = floatPreferencesKey("vertical_position_landscape")
+        val MAX_DISPLAY_CHARS = intPreferencesKey("max_display_chars")
     }
 
     val settings: Flow<TimingSettings> = context.dataStore.data
@@ -48,7 +49,8 @@ class SettingsRepository(private val context: Context) {
                 splitChunkMultiplier = prefs[Keys.SPLIT_CHUNK_MULTIPLIER] ?: TimingSettings.Default.splitChunkMultiplier,
                 anchorPositionPercent = prefs[Keys.ANCHOR_POSITION] ?: TimingSettings.Default.anchorPositionPercent,
                 verticalPositionPortrait = prefs[Keys.VERTICAL_POSITION_PORTRAIT] ?: TimingSettings.Default.verticalPositionPortrait,
-                verticalPositionLandscape = prefs[Keys.VERTICAL_POSITION_LANDSCAPE] ?: TimingSettings.Default.verticalPositionLandscape
+                verticalPositionLandscape = prefs[Keys.VERTICAL_POSITION_LANDSCAPE] ?: TimingSettings.Default.verticalPositionLandscape,
+                maxDisplayChars = prefs[Keys.MAX_DISPLAY_CHARS] ?: TimingSettings.Default.maxDisplayChars
             )
         }
 
@@ -65,6 +67,7 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.ANCHOR_POSITION] = settings.anchorPositionPercent
             prefs[Keys.VERTICAL_POSITION_PORTRAIT] = settings.verticalPositionPortrait
             prefs[Keys.VERTICAL_POSITION_LANDSCAPE] = settings.verticalPositionLandscape
+            prefs[Keys.MAX_DISPLAY_CHARS] = settings.maxDisplayChars
         }
     }
 }

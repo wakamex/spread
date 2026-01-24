@@ -2,11 +2,9 @@
 
 use crate::types::{ChapterStats, LengthBucket, Punctuation, Word};
 
-/// Maximum alphanumeric characters per chunk.
+/// Default maximum alphanumeric characters per chunk.
 /// With hyphens (up to 2), max display is 12 chars - fits 320dp screens.
-/// Within research-backed visual span of 10-12 chars.
-/// SYNC: Must match Kotlin Tokenizer.kt MAX_CHUNK_CHARS
-const MAX_CHUNK_CHARS: usize = 10;
+pub const DEFAULT_MAX_CHUNK_CHARS: usize = 10;
 
 /// Minimum chunk size to avoid tiny fragments that slow comprehension.
 const MIN_CHUNK_CHARS: usize = 3;
@@ -74,19 +72,20 @@ const SUFFIXES: &[&str] = &[
     "th", "ty",
 ];
 
-/// Minimum word length to consider splitting.
-/// Words at or above this length get split to fit screen width.
-/// SYNC: Must match Kotlin Tokenizer.kt MIN_SPLIT_LENGTH
-const MIN_SPLIT_LENGTH: usize = 11;
-
 /// Split a long word into chunks at morphological boundaries.
 /// Returns chunks with hyphens: ["Inter-", "national-", "-ization"]
-fn split_long_word(word: &str) -> Vec<String> {
+///
+/// `max_chunk_chars` controls max letters per chunk (default 10, range 10-22).
+/// Words are only split if they exceed max_chunk_chars.
+fn split_long_word(word: &str, max_chunk_chars: usize) -> Vec<String> {
     let clean: String = word.chars().filter(|c| c.is_alphabetic()).collect();
+
+    // Only split if word exceeds the max (with 2 char buffer for hyphens in display)
+    let min_split_length = max_chunk_chars + 1;
     let clean_lower = clean.to_lowercase();
 
     // Only split words that are long enough to benefit from splitting
-    if clean.len() < MIN_SPLIT_LENGTH {
+    if clean.len() < min_split_length {
         return vec![word.to_string()];
     }
 
@@ -129,19 +128,19 @@ fn split_long_word(word: &str) -> Vec<String> {
         remaining
     };
 
-    // Split middle into chunks of MAX_CHUNK_CHARS
+    // Split middle into chunks of max_chunk_chars
     if !middle.is_empty() {
         let mut pos = 0;
         while pos < middle.len() {
-            let end = (pos + MAX_CHUNK_CHARS).min(middle.len());
+            let end = (pos + max_chunk_chars).min(middle.len());
             let chunk = &middle[pos..end];
 
-            let formatted = if is_first && pos + MAX_CHUNK_CHARS >= middle.len() && suffix_len == 0 {
+            let formatted = if is_first && pos + max_chunk_chars >= middle.len() && suffix_len == 0 {
                 // Only chunk, no suffix - don't add hyphens
                 chunk.to_string()
             } else if is_first {
                 format!("{}-", chunk)
-            } else if pos + MAX_CHUNK_CHARS >= middle.len() && suffix_len == 0 {
+            } else if pos + max_chunk_chars >= middle.len() && suffix_len == 0 {
                 format!("-{}", chunk)
             } else {
                 format!("-{}-", chunk)
@@ -168,7 +167,9 @@ fn split_long_word(word: &str) -> Vec<String> {
 
 /// Tokenize text into words with length buckets and punctuation info.
 /// Long words are split into multiple chunks for RSVP display.
-pub fn tokenize(text: &str) -> Vec<Word> {
+///
+/// `max_chunk_chars` controls max letters per chunk (default 10, range 10-22).
+pub fn tokenize_with_config(text: &str, max_chunk_chars: usize) -> Vec<Word> {
     let mut words = Vec::new();
 
     for raw in text.split_whitespace() {
@@ -194,7 +195,7 @@ pub fn tokenize(text: &str) -> Vec<Word> {
             .unwrap_or(Punctuation::None);
 
         // Split long words
-        let chunks = split_long_word(raw);
+        let chunks = split_long_word(raw, max_chunk_chars);
         let chunk_count = chunks.len();
 
         for (i, chunk) in chunks.into_iter().enumerate() {
@@ -221,13 +222,18 @@ pub fn tokenize(text: &str) -> Vec<Word> {
     words
 }
 
+/// Tokenize with default chunk size (10 chars).
+pub fn tokenize(text: &str) -> Vec<Word> {
+    tokenize_with_config(text, DEFAULT_MAX_CHUNK_CHARS)
+}
+
 /// Tokenize multiple paragraphs, marking paragraph breaks.
-pub fn tokenize_paragraphs(paragraphs: &[&str]) -> Vec<Word> {
+pub fn tokenize_paragraphs_with_config(paragraphs: &[&str], max_chunk_chars: usize) -> Vec<Word> {
     let mut all_words = Vec::new();
     let para_count = paragraphs.len();
 
     for (p_idx, para) in paragraphs.iter().enumerate() {
-        let words = tokenize(para);
+        let words = tokenize_with_config(para, max_chunk_chars);
         if words.is_empty() {
             continue;
         }
@@ -248,9 +254,19 @@ pub fn tokenize_paragraphs(paragraphs: &[&str]) -> Vec<Word> {
     all_words
 }
 
-/// Create chapter from title and paragraphs
-pub fn create_chapter(index: u32, title: String, paragraphs: &[&str]) -> crate::types::Chapter {
-    let words = tokenize_paragraphs(paragraphs);
+/// Tokenize paragraphs with default chunk size.
+pub fn tokenize_paragraphs(paragraphs: &[&str]) -> Vec<Word> {
+    tokenize_paragraphs_with_config(paragraphs, DEFAULT_MAX_CHUNK_CHARS)
+}
+
+/// Create chapter from title and paragraphs with configurable chunk size.
+pub fn create_chapter_with_config(
+    index: u32,
+    title: String,
+    paragraphs: &[&str],
+    max_chunk_chars: usize,
+) -> crate::types::Chapter {
+    let words = tokenize_paragraphs_with_config(paragraphs, max_chunk_chars);
     let stats = ChapterStats::from_words(&words);
 
     crate::types::Chapter {
@@ -259,6 +275,11 @@ pub fn create_chapter(index: u32, title: String, paragraphs: &[&str]) -> crate::
         words,
         stats,
     }
+}
+
+/// Create chapter with default chunk size.
+pub fn create_chapter(index: u32, title: String, paragraphs: &[&str]) -> crate::types::Chapter {
+    create_chapter_with_config(index, title, paragraphs, DEFAULT_MAX_CHUNK_CHARS)
 }
 
 #[cfg(test)]
@@ -297,13 +318,13 @@ mod tests {
     #[test]
     fn test_split_long_word_short_word() {
         // Short words should not be split
-        let chunks = split_long_word("reading");
+        let chunks = split_long_word("reading", DEFAULT_MAX_CHUNK_CHARS);
         assert_eq!(chunks, vec!["reading"]);
     }
 
     #[test]
     fn test_split_long_word_with_prefix() {
-        let chunks = split_long_word("internationalization");
+        let chunks = split_long_word("internationalization", DEFAULT_MAX_CHUNK_CHARS);
         assert_eq!(chunks.len(), 3);
         assert_eq!(chunks[0], "inter-");
         assert!(chunks[1].starts_with("-") || !chunks[1].starts_with("-")); // middle chunk
@@ -313,19 +334,19 @@ mod tests {
     #[test]
     fn test_split_long_word_with_suffix() {
         // "unbelievable" is 12 chars, >= MIN_SPLIT_LENGTH (11), so it IS split
-        let chunks = split_long_word("unbelievable");
+        let chunks = split_long_word("unbelievable", DEFAULT_MAX_CHUNK_CHARS);
         assert!(chunks.len() >= 2, "12-char word should be split");
-        // Verify chunks fit MAX_CHUNK_CHARS
+        // Verify chunks fit DEFAULT_MAX_CHUNK_CHARS
         for chunk in &chunks {
             let clean_len: usize = chunk.chars().filter(|c| c.is_alphabetic()).count();
-            assert!(clean_len <= MAX_CHUNK_CHARS, "Chunk '{}' exceeds limit", chunk);
+            assert!(clean_len <= DEFAULT_MAX_CHUNK_CHARS, "Chunk '{}' exceeds limit", chunk);
         }
     }
 
     #[test]
     fn test_split_word_with_both_affixes() {
         // "unbelievability" is 15 chars, should be split
-        let chunks = split_long_word("unbelievability");
+        let chunks = split_long_word("unbelievability", DEFAULT_MAX_CHUNK_CHARS);
         assert!(chunks.len() >= 2, "15-char word should be split");
         assert_eq!(chunks[0], "un-");
     }
@@ -345,12 +366,12 @@ mod tests {
     #[test]
     fn test_split_extreme_word() {
         // 45 chars - should definitely be split
-        let chunks = split_long_word("pneumonoultramicroscopicsilicovolcanoconiosis");
+        let chunks = split_long_word("pneumonoultramicroscopicsilicovolcanoconiosis", DEFAULT_MAX_CHUNK_CHARS);
         assert!(chunks.len() >= 3);
-        // Each chunk should be <= MAX_CHUNK_CHARS + 2 (for hyphens)
+        // Each chunk should be <= DEFAULT_MAX_CHUNK_CHARS + 2 (for hyphens)
         for chunk in &chunks {
             let clean_len: usize = chunk.chars().filter(|c| c.is_alphabetic()).count();
-            assert!(clean_len <= MAX_CHUNK_CHARS, "Chunk '{}' too long: {} chars", chunk, clean_len);
+            assert!(clean_len <= DEFAULT_MAX_CHUNK_CHARS, "Chunk '{}' too long: {} chars", chunk, clean_len);
         }
     }
 
@@ -358,16 +379,16 @@ mod tests {
     fn test_no_split_short_word() {
         // "comprehension" is 13 chars, exactly at MIN_SPLIT_LENGTH
         // Should NOT be split (13 < 13 is false, so it stays as-is)
-        let chunks = split_long_word("comprehension");
+        let chunks = split_long_word("comprehension", DEFAULT_MAX_CHUNK_CHARS);
         // 13 chars is at the boundary - test the actual behavior
         assert!(!chunks.is_empty());
     }
 
     #[test]
     fn test_split_14_char_word() {
-        // "infrastructure" is 14 chars, should be split
-        let chunks = split_long_word("infrastructure");
-        assert!(chunks.len() >= 2, "14-char word should be split");
+        // "infrastructure" is 14 chars, should be split with default (10)
+        let chunks = split_long_word("infrastructure", DEFAULT_MAX_CHUNK_CHARS);
+        assert!(chunks.len() >= 2, "14-char word should be split with max_chunk_chars=10");
     }
 
     #[test]
@@ -375,24 +396,24 @@ mod tests {
         // Test scientific/technical terms with expanded affixes
 
         // "neuropsychological" - neuro + psychological
-        let chunks = split_long_word("neuropsychological");
+        let chunks = split_long_word("neuropsychological", DEFAULT_MAX_CHUNK_CHARS);
         assert!(chunks.len() >= 2);
         assert!(chunks[0].starts_with("neuro"), "Should detect 'neuro' prefix, got: {:?}", chunks);
 
         // "electroencephalography" - electro + encephalography
-        let chunks = split_long_word("electroencephalography");
+        let chunks = split_long_word("electroencephalography", DEFAULT_MAX_CHUNK_CHARS);
         assert!(chunks.len() >= 2);
         assert!(chunks[0].starts_with("electro"), "Should detect 'electro' prefix, got: {:?}", chunks);
 
         // "biodegradability" - bio + degradability
-        let chunks = split_long_word("biodegradability");
+        let chunks = split_long_word("biodegradability", DEFAULT_MAX_CHUNK_CHARS);
         assert!(chunks.len() >= 2);
         assert!(chunks[0].starts_with("bio"), "Should detect 'bio' prefix, got: {:?}", chunks);
     }
 
     #[test]
     fn test_max_chunk_size_enforced() {
-        // Verify no chunk exceeds MAX_CHUNK_CHARS (12)
+        // Verify no chunk exceeds DEFAULT_MAX_CHUNK_CHARS (10)
         let long_words = vec![
             "internationalization",
             "deinstitutionalization",
@@ -401,15 +422,88 @@ mod tests {
         ];
 
         for word in long_words {
-            let chunks = split_long_word(word);
+            let chunks = split_long_word(word, DEFAULT_MAX_CHUNK_CHARS);
             for chunk in &chunks {
                 let clean_len: usize = chunk.chars().filter(|c| c.is_alphabetic()).count();
                 assert!(
-                    clean_len <= MAX_CHUNK_CHARS,
+                    clean_len <= DEFAULT_MAX_CHUNK_CHARS,
                     "Chunk '{}' from '{}' has {} chars, exceeds limit of {}",
-                    chunk, word, clean_len, MAX_CHUNK_CHARS
+                    chunk, word, clean_len, DEFAULT_MAX_CHUNK_CHARS
                 );
             }
         }
+    }
+
+    #[test]
+    fn test_configurable_chunk_size() {
+        // With max_chunk_chars=20, "infrastructure" (14 chars) should NOT be split
+        let chunks = split_long_word("infrastructure", 20);
+        assert_eq!(chunks.len(), 1, "14-char word should not be split with max_chunk_chars=20");
+        assert_eq!(chunks[0], "infrastructure");
+
+        // With max_chunk_chars=10, "infrastructure" SHOULD be split
+        let chunks = split_long_word("infrastructure", 10);
+        assert!(chunks.len() >= 2, "14-char word should be split with max_chunk_chars=10");
+    }
+
+    #[test]
+    fn test_chunk_size_boundaries() {
+        // Test words at exact boundaries for various max_chunk_chars values
+
+        // 11-char word "comfortable" - should split at max=10, not at max=11+
+        let word = "comfortable"; // 11 chars
+        assert!(split_long_word(word, 10).len() >= 2, "11-char word should split at max=10");
+        assert_eq!(split_long_word(word, 11).len(), 1, "11-char word should NOT split at max=11");
+        assert_eq!(split_long_word(word, 12).len(), 1, "11-char word should NOT split at max=12");
+
+        // 15-char word "internationally" - should split at max<=14
+        let word = "internationally"; // 15 chars
+        assert!(split_long_word(word, 10).len() >= 2, "15-char word should split at max=10");
+        assert!(split_long_word(word, 14).len() >= 2, "15-char word should split at max=14");
+        assert_eq!(split_long_word(word, 15).len(), 1, "15-char word should NOT split at max=15");
+
+        // 20-char word "internationalization" - test across range
+        let word = "internationalization"; // 20 chars
+        assert!(split_long_word(word, 10).len() >= 2, "20-char should split at max=10");
+        assert!(split_long_word(word, 15).len() >= 2, "20-char should split at max=15");
+        assert!(split_long_word(word, 19).len() >= 2, "20-char should split at max=19");
+        assert_eq!(split_long_word(word, 20).len(), 1, "20-char should NOT split at max=20");
+        assert_eq!(split_long_word(word, 22).len(), 1, "20-char should NOT split at max=22");
+    }
+
+    #[test]
+    fn test_chunk_size_respects_limit() {
+        // Verify that chunks respect the configured max size
+        let word = "internationalization"; // 20 chars
+
+        for max_chars in [10, 12, 15, 18] {
+            let chunks = split_long_word(word, max_chars);
+            for chunk in &chunks {
+                let clean_len: usize = chunk.chars().filter(|c| c.is_alphabetic()).count();
+                assert!(
+                    clean_len <= max_chars,
+                    "With max={}, chunk '{}' has {} chars",
+                    max_chars, chunk, clean_len
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_tokenize_with_config_uses_chunk_size() {
+        // Verify tokenize_with_config passes chunk size to split_long_word
+        let text = "The infrastructure is important.";
+
+        // With max=20, "infrastructure" stays intact
+        let words = tokenize_with_config(text, 20);
+        assert!(words.iter().any(|w| w.text == "infrastructure"),
+            "With max=20, 'infrastructure' should not be split");
+
+        // With max=10, "infrastructure" gets split
+        let words = tokenize_with_config(text, 10);
+        assert!(!words.iter().any(|w| w.text == "infrastructure"),
+            "With max=10, 'infrastructure' should be split");
+        assert!(words.iter().any(|w| w.text.contains("infra")),
+            "Should have chunk containing 'infra'");
     }
 }

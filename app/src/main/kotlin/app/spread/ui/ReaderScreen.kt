@@ -114,6 +114,7 @@ fun ReaderScreen(
                     WordDisplay(
                         word = word,
                         anchorPositionPercent = state.settings.anchorPositionPercent,
+                        maxDisplayChars = state.settings.maxDisplayChars,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = verticalOffsetDp)
@@ -168,15 +169,15 @@ private fun TopBar(
 }
 
 /**
- * Calculate optimal font size to fit MAX_CHUNK_CHARS on screen.
- * Based on screen width and orientation.
+ * Calculate optimal font size to fit maxDisplayChars on screen.
+ * Accounts for anchor position and ORP offset.
  */
 @Composable
-private fun rememberOptimalFontSize(): androidx.compose.ui.unit.TextUnit {
+private fun rememberOptimalFontSize(maxDisplayChars: Int, anchorPosition: Float): androidx.compose.ui.unit.TextUnit {
     val configuration = LocalConfiguration.current
 
-    return remember(configuration.screenWidthDp, configuration.orientation) {
-        FontSizing.calculateFontSp(configuration.screenWidthDp.toFloat()).sp
+    return remember(configuration.screenWidthDp, configuration.orientation, maxDisplayChars, anchorPosition) {
+        FontSizing.calculateFontSp(configuration.screenWidthDp.toFloat(), maxDisplayChars, anchorPosition).sp
     }
 }
 
@@ -184,6 +185,7 @@ private fun rememberOptimalFontSize(): androidx.compose.ui.unit.TextUnit {
 private fun WordDisplay(
     word: String,
     anchorPositionPercent: Float,
+    maxDisplayChars: Int,
     modifier: Modifier = Modifier
 ) {
     if (word.isEmpty()) {
@@ -191,8 +193,8 @@ private fun WordDisplay(
     }
 
     val orpIndex = calculateORP(word)
-    // Dynamic font size based on screen width - ensures MAX_CHUNK_CHARS fits
-    val fontSize = rememberOptimalFontSize()
+    // Dynamic font size based on screen width, max chars, and anchor position
+    val fontSize = rememberOptimalFontSize(maxDisplayChars, anchorPositionPercent)
     val guideLineColor = Color.White.copy(alpha = 0.08f)
 
     Column(

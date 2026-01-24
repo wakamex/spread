@@ -69,7 +69,8 @@ class TimingTest {
             splitChunkMultiplier = 1.0f,
             anchorPositionPercent = 0.5f,
             verticalPositionPortrait = 0.22f,
-            verticalPositionLandscape = 0.38f
+            verticalPositionLandscape = 0.38f,
+            maxDisplayChars = TimingSettings.DEFAULT_MAX_DISPLAY_CHARS
         )
 
         val result = calculateEffectiveWpm(stats, settings)

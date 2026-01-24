@@ -48,10 +48,11 @@ class MainActivity : ComponentActivity() {
                         uri?.let {
                             isLoading = true
                             scope.launch {
-                                val book = loadEpubFromUri(context, uri)
+                                val result = loadEpubFromUri(context, uri, state.settings.maxDisplayChars)
                                 isLoading = false
-                                if (book != null) {
-                                    viewModel.loadBook(book, fileUri = uri)
+                                if (result != null) {
+                                    val (book, source) = result
+                                    viewModel.loadBook(book, source, fileUri = uri)
                                 } else {
                                     Toast.makeText(
                                         context,
@@ -63,10 +64,11 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // Load demo book on first launch
-                    LaunchedEffect(Unit) {
-                        if (state.book == null) {
-                            viewModel.loadBook(createDemoBook())
+                    // Load demo book after settings are ready
+                    LaunchedEffect(state.settingsLoaded) {
+                        if (state.settingsLoaded && state.book == null) {
+                            val book = createDemoBook(state.settings.maxDisplayChars)
+                            viewModel.loadBook(book, BookSource.Demo)
                         }
                     }
 
@@ -103,24 +105,28 @@ class MainActivity : ComponentActivity() {
 
 /**
  * Load and parse an EPUB file from a content URI.
+ * Returns the parsed Book and its source for re-parsing.
  */
 private suspend fun loadEpubFromUri(
     context: android.content.Context,
-    uri: Uri
-): Book? = withContext(Dispatchers.IO) {
+    uri: Uri,
+    maxChunkChars: Int
+): Pair<Book, BookSource.Epub>? = withContext(Dispatchers.IO) {
     try {
         val inputStream = context.contentResolver.openInputStream(uri)
             ?: return@withContext null
 
         val bytes = inputStream.use { it.readBytes() }
 
-        val nativeBook = NativeParser.parseEpub(bytes)
+        val nativeBook = NativeParser.parseEpubWithConfig(bytes, maxChunkChars)
             ?: return@withContext null
 
         // Generate a unique ID for this book
         val bookId = UUID.randomUUID().toString()
+        val book = nativeBook.toDomain(bookId)
+        val source = BookSource.Epub(bytes, bookId)
 
-        nativeBook.toDomain(bookId)
+        Pair(book, source)
     } catch (e: Exception) {
         e.printStackTrace()
         null
@@ -129,8 +135,9 @@ private suspend fun loadEpubFromUri(
 
 /**
  * Demo book for first-time users to test the app.
+ * Also used for re-parsing when chunk size changes.
  */
-private fun createDemoBook(): Book {
+fun createDemoBook(maxChunkChars: Int = WordSplitConfig.DEFAULT_MAX_CHUNK_CHARS): Book {
     val sampleText = """
         Speed reading is a collection of reading methods which attempt to increase rates of reading
         without greatly reducing comprehension or retention. Methods include chunking and minimizing
@@ -152,7 +159,8 @@ private fun createDemoBook(): Book {
     val chapter1 = createChapter(
         index = 0,
         title = "Introduction to Speed Reading",
-        paragraphs = paragraphs
+        paragraphs = paragraphs,
+        maxChunkChars = maxChunkChars
     )
 
     val chapter2 = createChapter(
@@ -162,10 +170,11 @@ private fun createDemoBook(): Book {
             "The human eye can only focus on a small area at a time, called the foveal region. Traditional reading requires moving this focal point across lines of text, which takes time.",
             "RSVP eliminates eye movement by presenting words at a fixed point. The brain can process words faster when the eye doesn't need to move.",
             "Studies show that comprehension begins to decrease at speeds above 500-600 words per minute for most readers. However, with practice, many people can improve both speed and comprehension."
-        )
+        ),
+        maxChunkChars = maxChunkChars
     )
 
-    // Chapter with long words to test morpheme splitting (words ≥13 chars get split)
+    // Chapter with long words to test morpheme splitting
     val chapter3 = createChapter(
         index = 2,
         title = "Testing Long Words",
@@ -174,7 +183,8 @@ private fun createDemoBook(): Book {
             "We must address misunderstandings about responsibilities in deinstitutionalization. These counterrevolutionary incomprehensibilities need clarification.",
             "The compartmentalization of interdisciplinary electroencephalography demonstrates psychophysiological characteristics of neuropsychological experimentation.",
             "Characteristically, overcompensation and misrepresentation lead to disproportionate counterproductivity in any organizational restructuring."
-        )
+        ),
+        maxChunkChars = maxChunkChars
     )
 
     return createBook(

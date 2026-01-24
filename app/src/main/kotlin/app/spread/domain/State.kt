@@ -4,10 +4,26 @@ package app.spread.domain
  * Reader state and pure state transitions.
  */
 
+/**
+ * Source data for re-parsing a book when settings change.
+ */
+sealed interface BookSource {
+    /** EPUB book - store bytes for re-parsing */
+    data class Epub(val bytes: ByteArray, val bookId: String) : BookSource {
+        override fun equals(other: Any?) = other is Epub && bookId == other.bookId
+        override fun hashCode() = bookId.hashCode()
+    }
+
+    /** Demo book - no storage needed, regenerate from hardcoded content */
+    data object Demo : BookSource
+}
+
 data class ReaderState(
     val book: Book?,
+    val bookSource: BookSource?,
     val position: Position,
     val settings: TimingSettings,
+    val settingsLoaded: Boolean,
     val playing: Boolean,
     val effectiveWpmInfo: EffectiveWpmInfo?
 ) {
@@ -60,8 +76,10 @@ data class ReaderState(
     companion object {
         val Initial = ReaderState(
             book = null,
+            bookSource = null,
             position = Position.START,
             settings = TimingSettings.Default,
+            settingsLoaded = false,
             playing = false,
             effectiveWpmInfo = null
         )
@@ -100,10 +118,12 @@ sealed interface Action {
     data class SetAnchorPosition(val percent: Float) : Action
     data class SetVerticalPositionPortrait(val percent: Float) : Action
     data class SetVerticalPositionLandscape(val percent: Float) : Action
+    data class SetMaxDisplayChars(val chars: Int) : Action
     data class ApplyPreset(val preset: TimingSettings) : Action
 
     // Content
-    data class BookLoaded(val book: Book) : Action
+    data class BookLoaded(val book: Book, val source: BookSource) : Action
+    data class BookReparsed(val book: Book, val position: Position) : Action
     data object BookClosed : Action
     data object RestartBook : Action
 
@@ -119,6 +139,12 @@ sealed interface Effect {
     data object CancelTick : Effect
     data class SaveProgress(val bookId: BookId, val position: Position) : Effect
     data class SaveSettings(val settings: TimingSettings) : Effect
+    data class ReparseBook(
+        val source: BookSource,
+        val maxChunkChars: Int,
+        val currentPosition: Position,
+        val currentBook: Book
+    ) : Effect
 }
 
 // --- Reducer output ---
@@ -308,6 +334,26 @@ fun reduce(state: ReaderState, action: Action): Update {
             )
         }
 
+        is Action.SetMaxDisplayChars -> {
+            val newChars = action.chars.coerceIn(10, 24)
+            val oldChars = state.settings.maxDisplayChars
+            val newSettings = state.settings.copy(maxDisplayChars = newChars)
+
+            val effects = mutableListOf<Effect>(Effect.SaveSettings(newSettings))
+
+            // Trigger re-parse if chunk size changed and we have a book with source
+            val source = state.bookSource
+            val book = state.book
+            if (newChars != oldChars && source != null && book != null) {
+                effects.add(Effect.ReparseBook(source, newChars, state.position, book))
+            }
+
+            Update(
+                state = state.copy(settings = newSettings),
+                effects = effects
+            )
+        }
+
         is Action.ApplyPreset -> Update(
             state = state.copy(settings = action.preset).recalculateWpm(),
             effects = listOf(Effect.SaveSettings(action.preset))
@@ -316,14 +362,31 @@ fun reduce(state: ReaderState, action: Action): Update {
         is Action.BookLoaded -> {
             val newState = state.copy(
                 book = action.book,
+                bookSource = action.source,
                 position = Position.START,
                 playing = false
             ).recalculateWpm()
             Update(newState, listOf(Effect.CancelTick))
         }
 
+        is Action.BookReparsed -> {
+            // Book was re-parsed with new chunk size - update book and position
+            val newState = state.copy(
+                book = action.book,
+                position = action.position,
+                playing = false
+            ).recalculateWpm()
+            Update(newState, listOf(Effect.CancelTick))
+        }
+
         Action.BookClosed -> Update(
-            state = state.copy(book = null, position = Position.START, playing = false, effectiveWpmInfo = null),
+            state = state.copy(
+                book = null,
+                bookSource = null,
+                position = Position.START,
+                playing = false,
+                effectiveWpmInfo = null
+            ),
             effects = listOf(Effect.CancelTick)
         )
 
@@ -339,7 +402,10 @@ fun reduce(state: ReaderState, action: Action): Update {
         }
 
         is Action.SettingsLoaded -> Update(
-            state = state.copy(settings = action.settings).recalculateWpm()
+            state = state.copy(
+                settings = action.settings,
+                settingsLoaded = true
+            ).recalculateWpm()
         )
 
         is Action.RestorePosition -> {
@@ -396,4 +462,41 @@ private fun ReaderState.prevPosition(): Position? {
 private fun ReaderState.recalculateWpm(): ReaderState {
     val book = book ?: return copy(effectiveWpmInfo = null)
     return copy(effectiveWpmInfo = calculateEffectiveWpmInfo(book, position, settings))
+}
+
+/**
+ * Map a position from an old book to a new book after re-parsing.
+ * Uses character offset to find the equivalent position.
+ */
+fun mapPositionAfterReparse(oldPosition: Position, oldBook: Book, newBook: Book): Position {
+    // Get old chapter
+    val oldChapter = oldBook.chapters.getOrNull(oldPosition.chapterIndex)
+        ?: return Position.START
+
+    // Calculate character offset in old chapter (sum of word text lengths before current word)
+    val charOffset = oldChapter.words
+        .take(oldPosition.wordIndex)
+        .sumOf { it.text.filter { c -> c.isLetterOrDigit() }.length }
+
+    // Find corresponding chapter in new book (same index)
+    val newChapter = newBook.chapters.getOrNull(oldPosition.chapterIndex)
+        ?: return Position.START
+
+    // Walk through new chapter's words to find position at or past charOffset
+    var accumulated = 0
+    var newWordIndex = 0
+    for ((index, word) in newChapter.words.withIndex()) {
+        val wordLen = word.text.filter { it.isLetterOrDigit() }.length
+        if (accumulated + wordLen > charOffset) {
+            newWordIndex = index
+            break
+        }
+        accumulated += wordLen
+        newWordIndex = index
+    }
+
+    return Position(
+        chapterIndex = oldPosition.chapterIndex,
+        wordIndex = newWordIndex.coerceIn(0, newChapter.words.lastIndex.coerceAtLeast(0))
+    )
 }

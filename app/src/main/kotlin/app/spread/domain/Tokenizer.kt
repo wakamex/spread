@@ -11,21 +11,10 @@ package app.spread.domain
 /**
  * Word splitting constants.
  * SYNC: These values must match rust/src/tokenizer.rs
- *
- * Strategy: Split at cognitive max (12 chars per research), then adjust
- * font size per orientation so chunks always fit on screen.
  */
 object WordSplitConfig {
-    /** Split words at or above this length */
-    const val MIN_SPLIT_LENGTH = 11
-
-    /**
-     * Maximum alphanumeric characters per chunk.
-     * With hyphens (up to 2), max display is 12 chars - fits 320dp screens.
-     * Within research-backed visual span of 10-12 chars.
-     * SYNC: Must match rust/src/tokenizer.rs MAX_CHUNK_CHARS
-     */
-    const val MAX_CHUNK_CHARS = 10
+    /** Default max alphanumeric chars per chunk (matches Rust DEFAULT_MAX_CHUNK_CHARS) */
+    const val DEFAULT_MAX_CHUNK_CHARS = 10
 
     /** Minimum chunk size to avoid tiny fragments */
     const val MIN_CHUNK_CHARS = 3
@@ -60,14 +49,18 @@ private val SUFFIXES = listOf(
 /**
  * Split a long word into readable chunks at morpheme boundaries.
  * Returns list of chunks with hyphen markers for continuation.
+ *
+ * @param maxChunkChars Maximum alphanumeric characters per chunk (default 10)
  */
-private fun splitWord(word: String): List<String> {
+private fun splitWord(word: String, maxChunkChars: Int = WordSplitConfig.DEFAULT_MAX_CHUNK_CHARS): List<String> {
     // Extract leading/trailing punctuation
     val leadingPunct = word.takeWhile { !it.isLetterOrDigit() }
     val trailingPunct = word.takeLastWhile { !it.isLetterOrDigit() }
     val clean = word.drop(leadingPunct.length).dropLast(trailingPunct.length)
 
-    if (clean.length < WordSplitConfig.MIN_SPLIT_LENGTH) {
+    // Only split if word exceeds max (min_split_length = maxChunkChars + 1)
+    val minSplitLength = maxChunkChars + 1
+    if (clean.length < minSplitLength) {
         return listOf(word)
     }
 
@@ -111,15 +104,15 @@ private fun splitWord(word: String): List<String> {
         var pos = 0
         while (pos < middle.length) {
             val isFirst = pos == 0 && prefixLen == 0
-            val end = (pos + WordSplitConfig.MAX_CHUNK_CHARS).coerceAtMost(middle.length)
+            val end = (pos + maxChunkChars).coerceAtMost(middle.length)
             val chunk = middle.substring(pos, end)
 
-            val formatted = if (isFirst && pos + WordSplitConfig.MAX_CHUNK_CHARS >= middle.length && suffixLen == 0) {
+            val formatted = if (isFirst && pos + maxChunkChars >= middle.length && suffixLen == 0) {
                 // Only chunk, use original punctuation
                 leadingPunct + chunk + trailingPunct
             } else if (isFirst) {
                 leadingPunct + chunk + "-"
-            } else if (pos + WordSplitConfig.MAX_CHUNK_CHARS >= middle.length && suffixLen == 0) {
+            } else if (pos + maxChunkChars >= middle.length && suffixLen == 0) {
                 "-" + chunk + trailingPunct
             } else {
                 "-" + chunk + "-"
@@ -140,9 +133,11 @@ private fun splitWord(word: String): List<String> {
 
 /**
  * Tokenize raw text into Words with length buckets and punctuation info.
- * Long words (≥13 chars) are split at morpheme boundaries.
+ * Long words are split at morpheme boundaries based on maxChunkChars.
+ *
+ * @param maxChunkChars Maximum alphanumeric characters per chunk (default 10)
  */
-fun tokenize(text: String): List<Word> {
+fun tokenize(text: String, maxChunkChars: Int = WordSplitConfig.DEFAULT_MAX_CHUNK_CHARS): List<Word> {
     val words = mutableListOf<Word>()
     val rawWords = text.split(Regex("\\s+")).filter { it.isNotBlank() }
 
@@ -152,7 +147,7 @@ fun tokenize(text: String): List<Word> {
         if (cleaned.isEmpty()) continue
 
         // Split long words
-        val chunks = splitWord(raw)
+        val chunks = splitWord(raw, maxChunkChars)
 
         for ((chunkIndex, chunk) in chunks.withIndex()) {
             val chunkCleaned = chunk.filter { it.isLetterOrDigit() || it == '\'' }
@@ -181,12 +176,17 @@ fun tokenize(text: String): List<Word> {
 
 /**
  * Tokenize paragraphs, marking paragraph breaks.
+ *
+ * @param maxChunkChars Maximum alphanumeric characters per chunk (default 10)
  */
-fun tokenizeParagraphs(paragraphs: List<String>): List<Word> {
+fun tokenizeParagraphs(
+    paragraphs: List<String>,
+    maxChunkChars: Int = WordSplitConfig.DEFAULT_MAX_CHUNK_CHARS
+): List<Word> {
     val allWords = mutableListOf<Word>()
 
     for ((pIndex, paragraph) in paragraphs.withIndex()) {
-        val words = tokenize(paragraph)
+        val words = tokenize(paragraph, maxChunkChars)
         if (words.isEmpty()) continue
 
         // Add all words except the last one as-is
@@ -207,9 +207,16 @@ fun tokenizeParagraphs(paragraphs: List<String>): List<Word> {
 
 /**
  * Create a Chapter from title and paragraph text.
+ *
+ * @param maxChunkChars Maximum alphanumeric characters per chunk (default 10)
  */
-fun createChapter(index: Int, title: String, paragraphs: List<String>): Chapter {
-    val words = tokenizeParagraphs(paragraphs)
+fun createChapter(
+    index: Int,
+    title: String,
+    paragraphs: List<String>,
+    maxChunkChars: Int = WordSplitConfig.DEFAULT_MAX_CHUNK_CHARS
+): Chapter {
+    val words = tokenizeParagraphs(paragraphs, maxChunkChars)
     return Chapter(
         index = index,
         title = title,
