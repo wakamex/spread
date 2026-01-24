@@ -27,13 +27,16 @@ private val Orangered = Color(0xFFFF4500)
 fun WordDisplayTestable(
     word: String,
     modifier: Modifier = Modifier,
-    showCenterLine: Boolean = false  // Debug: show vertical center line
+    showCenterLine: Boolean = false,  // Debug: show vertical center line
+    showBoundaries: Boolean = false   // Debug: show screen edge boundaries
 ) {
     if (word.isEmpty()) return
 
     val orpIndex = calculateORPTestable(word)
+    // Fixed font size - word splitting in Rust parser handles long words
     val fontSize = 48.sp
     val guideLineColor = Color.White.copy(alpha = 0.08f)
+    val boundaryColor = Color.Yellow.copy(alpha = 0.7f)
 
     Box(
         modifier = modifier
@@ -41,6 +44,26 @@ fun WordDisplayTestable(
             .background(Color.Black)
             .padding(vertical = 32.dp)
     ) {
+        // Left boundary marker
+        if (showBoundaries) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .width(4.dp)
+                    .height(100.dp)
+                    .background(boundaryColor)
+            )
+        }
+        // Right boundary marker
+        if (showBoundaries) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .width(4.dp)
+                    .height(100.dp)
+                    .background(boundaryColor)
+            )
+        }
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally

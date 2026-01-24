@@ -1,16 +1,27 @@
 package app.spread.ui
 
+import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import app.spread.data.NativeParser
+import app.spread.data.toDomain
 import app.spread.domain.*
 import app.spread.ui.theme.SpreadTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.UUID
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -22,17 +33,42 @@ class MainActivity : ComponentActivity() {
                 Box(
                     modifier = Modifier.fillMaxSize()
                 ) {
+                    val context = LocalContext.current
                     val viewModel: ReaderViewModel = viewModel()
                     val state by viewModel.state.collectAsState()
+                    val scope = rememberCoroutineScope()
 
-                    // Load demo book on first launch (for testing)
+                    var showSettings by remember { mutableStateOf(false) }
+                    var isLoading by remember { mutableStateOf(false) }
+
+                    // File picker launcher
+                    val filePickerLauncher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.OpenDocument()
+                    ) { uri: Uri? ->
+                        uri?.let {
+                            isLoading = true
+                            scope.launch {
+                                val book = loadEpubFromUri(context, uri)
+                                isLoading = false
+                                if (book != null) {
+                                    viewModel.loadBook(book)
+                                } else {
+                                    Toast.makeText(
+                                        context,
+                                        "Failed to parse EPUB",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+                        }
+                    }
+
+                    // Load demo book on first launch
                     LaunchedEffect(Unit) {
                         if (state.book == null) {
                             viewModel.loadBook(createDemoBook())
                         }
                     }
-
-                    var showSettings by remember { mutableStateOf(false) }
 
                     ReaderScreen(
                         state = state,
@@ -41,7 +77,13 @@ class MainActivity : ComponentActivity() {
                         onNext = viewModel::nextWord,
                         onSeek = viewModel::seekChapter,
                         onWpmChange = viewModel::setWpm,
-                        onSettingsClick = { showSettings = true }
+                        onSettingsClick = { showSettings = true },
+                        onOpenBook = {
+                            filePickerLauncher.launch(arrayOf(
+                                "application/epub+zip",
+                                "application/octet-stream"
+                            ))
+                        }
                     )
 
                     if (showSettings) {
@@ -59,7 +101,33 @@ class MainActivity : ComponentActivity() {
 }
 
 /**
- * Demo book for testing. Remove when file parsing is implemented.
+ * Load and parse an EPUB file from a content URI.
+ */
+private suspend fun loadEpubFromUri(
+    context: android.content.Context,
+    uri: Uri
+): Book? = withContext(Dispatchers.IO) {
+    try {
+        val inputStream = context.contentResolver.openInputStream(uri)
+            ?: return@withContext null
+
+        val bytes = inputStream.use { it.readBytes() }
+
+        val nativeBook = NativeParser.parseEpub(bytes)
+            ?: return@withContext null
+
+        // Generate a unique ID for this book
+        val bookId = UUID.randomUUID().toString()
+
+        nativeBook.toDomain(bookId)
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
+    }
+}
+
+/**
+ * Demo book for first-time users to test the app.
  */
 private fun createDemoBook(): Book {
     val sampleText = """
@@ -96,10 +164,22 @@ private fun createDemoBook(): Book {
         )
     )
 
+    // Chapter with long words to test morpheme splitting (words ≥13 chars get split)
+    val chapter3 = createChapter(
+        index = 2,
+        title = "Testing Long Words",
+        paragraphs = listOf(
+            "This chapter tests internationalization of telecommunications infrastructure. The professionalization of environmentalism requires conceptualization.",
+            "We must address misunderstandings about responsibilities in deinstitutionalization. These counterrevolutionary incomprehensibilities need clarification.",
+            "The compartmentalization of interdisciplinary electroencephalography demonstrates psychophysiological characteristics of neuropsychological experimentation.",
+            "Characteristically, overcompensation and misrepresentation lead to disproportionate counterproductivity in any organizational restructuring."
+        )
+    )
+
     return createBook(
         id = "demo-book",
         title = "Understanding Speed Reading",
         author = "Demo Author",
-        chapters = listOf(chapter1, chapter2)
+        chapters = listOf(chapter1, chapter2, chapter3)
     )
 }

@@ -33,6 +33,7 @@ fun ReaderScreen(
     onSeek: (Float) -> Unit,
     onWpmChange: (Int) -> Unit,
     onSettingsClick: () -> Unit,
+    onOpenBook: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val word = state.currentWord?.text ?: ""
@@ -54,6 +55,7 @@ fun ReaderScreen(
         // Header
         TopBar(
             chapterTitle = chapter?.title ?: "",
+            onOpenBook = onOpenBook,
             onSettingsClick = onSettingsClick
         )
 
@@ -95,6 +97,7 @@ fun ReaderScreen(
 @Composable
 private fun TopBar(
     chapterTitle: String,
+    onOpenBook: () -> Unit,
     onSettingsClick: () -> Unit
 ) {
     Row(
@@ -113,8 +116,13 @@ private fun TopBar(
             modifier = Modifier.weight(1f)
         )
 
-        IconButton(onClick = onSettingsClick) {
-            Text("⚙", fontSize = 20.sp, color = Color.White)
+        Row {
+            IconButton(onClick = onOpenBook) {
+                Text("📖", fontSize = 18.sp)
+            }
+            IconButton(onClick = onSettingsClick) {
+                Text("⚙", fontSize = 20.sp, color = Color.White)
+            }
         }
     }
 }
@@ -129,6 +137,7 @@ private fun WordDisplay(
     }
 
     val orpIndex = calculateORP(word)
+    // Fixed font size - word splitting in Rust parser handles long words
     val fontSize = 48.sp
     val guideLineColor = Color.White.copy(alpha = 0.08f)
 
