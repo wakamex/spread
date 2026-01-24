@@ -45,7 +45,7 @@ Research compiled primarily by Gemini 3 Deep Research with contributions from Cl
 
 ## Building from Source
 
-Requires JDK 17+ and Android SDK 34.
+Requires JDK 21 and Android SDK 34.
 
 ```bash
 ./gradlew assembleDebug
