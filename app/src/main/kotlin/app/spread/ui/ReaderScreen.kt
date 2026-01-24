@@ -9,13 +9,19 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.spread.domain.*
 import kotlin.math.roundToInt
+
+// Orangered - optimal for RSVP ORP highlighting on dark backgrounds
+// Better perceived luminance and edge contrast than pure red
+private val Orangered = Color(0xFFFF4500)
 
 @Composable
 fun ReaderScreen(
@@ -50,20 +56,25 @@ fun ReaderScreen(
             onSettingsClick = onSettingsClick
         )
 
-        // Word display - main content area
+        // Word display - positioned in upper third for ergonomic focus
         Box(
             modifier = Modifier
                 .weight(1f)
-                .fillMaxWidth(),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
         ) {
             if (state.book != null) {
-                WordDisplay(word = word)
+                WordDisplay(
+                    word = word,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 48.dp) // Upper third positioning
+                )
             } else {
                 Text(
                     text = "No book loaded",
                     color = Color.Gray,
-                    fontSize = 18.sp
+                    fontSize = 18.sp,
+                    modifier = Modifier.align(Alignment.Center)
                 )
             }
         }
@@ -108,26 +119,74 @@ private fun TopBar(
 }
 
 @Composable
-private fun WordDisplay(word: String) {
+private fun WordDisplay(
+    word: String,
+    modifier: Modifier = Modifier
+) {
     if (word.isEmpty()) {
         return
     }
 
     val orpIndex = calculateORP(word)
+    val fontSize = 48.sp
+    val guideLineColor = Color.White.copy(alpha = 0.08f)
 
-    Row(
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
+    // With monospace font, all chars have equal width
+    // Calculate offset to center the ORP character at screen center
+    // Offset = (orpIndex - wordLength/2) * charWidth
+    // Negative offset means shift right, positive means shift left
+    val charCount = word.length
+    val offsetChars = orpIndex - (charCount - 1) / 2f
+
+    // Approximate character width for monospace at 48sp
+    val density = LocalDensity.current
+    val charWidthDp = with(density) { (fontSize.toPx() * 0.6f).toDp() }
+    val offsetDp = charWidthDp * offsetChars
+
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        word.forEachIndexed { index, char ->
-            Text(
-                text = char.toString(),
-                color = if (index == orpIndex) Color.Red else Color.White,
-                fontSize = 48.sp,
-                fontFamily = FontFamily.Monospace,
-                fontWeight = if (index == orpIndex) FontWeight.Bold else FontWeight.Normal
-            )
+        // Upper guide line
+        Box(
+            modifier = Modifier
+                .width(200.dp)
+                .height(1.dp)
+                .background(guideLineColor)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Word with ORP center-locked
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            Row(
+                modifier = Modifier.offset(x = -offsetDp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                word.forEachIndexed { index, char ->
+                    Text(
+                        text = char.toString(),
+                        color = if (index == orpIndex) Orangered else Color.White,
+                        fontSize = fontSize,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = if (index == orpIndex) FontWeight.Bold else FontWeight.Normal
+                    )
+                }
+            }
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Lower guide line
+        Box(
+            modifier = Modifier
+                .width(200.dp)
+                .height(1.dp)
+                .background(guideLineColor)
+        )
     }
 }
 
