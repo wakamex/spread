@@ -39,9 +39,13 @@
 
 #### Adaptive Font Sizing
 - **Font size adapts per screen width** to fit configured max display chars
+- **Runtime font measurement** using Compose `TextMeasurer` for accurate sizing
+  - Measures actual device font metrics instead of hardcoded assumptions
+  - Prevents text clipping across all devices regardless of font variations
+  - Fallback to conservative estimate (5% safety margin) for tests/previews
 - Default: 12 display chars (10 letters + 2 hyphens) based on cognitive research
 - 320dp portrait: ~42sp, 730dp landscape: 48sp (base)
-- Uses `FontSizing.calculateFontSp()` shared between ReaderScreen and previews
+- Proper edge padding (16dp each side) enforced in layout
 - Ensures consistent chunk display across orientations
 
 #### Configurable Max Chunk Size
@@ -190,6 +194,14 @@
 - Covers 99%+ of active Android devices
 - Compose works well with desugaring for older APIs
 - Rust/JNI has no Android version restrictions
+
+#### Why runtime font measurement instead of hardcoded width?
+- Different devices have different monospace font metrics
+- Hardcoded `BASE_CHAR_WIDTH_DP = 29f` caused clipping on some devices
+- Robolectric tests use different fonts than real devices
+- Runtime `TextMeasurer.measure("M")` gets actual device font width
+- Calculation adapts: `fontSize = base * (availableSpace / measuredWidth)`
+- No external library needed - uses Compose's built-in `rememberTextMeasurer()`
 
 ### Known Issues
 - No library screen yet (books can be opened but not browsed)

@@ -16,6 +16,8 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.spread.domain.*
@@ -170,14 +172,30 @@ private fun TopBar(
 
 /**
  * Calculate optimal font size to fit maxDisplayChars on screen.
- * Accounts for anchor position and ORP offset.
+ * Uses runtime font measurement for accurate sizing across all devices.
  */
 @Composable
 private fun rememberOptimalFontSize(maxDisplayChars: Int, anchorPosition: Float): androidx.compose.ui.unit.TextUnit {
     val configuration = LocalConfiguration.current
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val textMeasurer = rememberTextMeasurer()
 
     return remember(configuration.screenWidthDp, configuration.orientation, maxDisplayChars, anchorPosition) {
-        FontSizing.calculateFontSp(configuration.screenWidthDp.toFloat(), maxDisplayChars, anchorPosition).sp
+        // Measure actual character width at base font size
+        val testStyle = TextStyle(
+            fontFamily = FontFamily.Monospace,
+            fontSize = FontSizing.BASE_FONT_SP.sp
+        )
+        val measuredWidthPx = textMeasurer.measure("M", testStyle).size.width
+        val measuredCharWidthDp = with(density) { measuredWidthPx.toDp().value }
+
+        // Calculate font size using actual measured width
+        FontSizing.calculateFontSpFromMeasured(
+            screenWidthDp = configuration.screenWidthDp.toFloat(),
+            measuredCharWidthDp = measuredCharWidthDp,
+            maxDisplayChars = maxDisplayChars,
+            anchorPosition = anchorPosition
+        ).sp
     }
 }
 
@@ -214,8 +232,11 @@ private fun WordDisplay(
         // Word with ORP positioned at anchorPositionPercent of screen width
         // Default 0.42 (42%) places anchor left of center to accommodate
         // the asymmetric ORP (35% into word = more chars extend right)
+        // Horizontal padding must match EDGE_PADDING_DP assumed by FontSizing
         Box(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = FontSizing.EDGE_PADDING_DP.dp),
             contentAlignment = Alignment.CenterStart
         ) {
             Row(

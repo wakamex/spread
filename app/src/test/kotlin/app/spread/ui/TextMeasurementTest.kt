@@ -79,12 +79,13 @@ class TextMeasurementTest {
             val textWidthPx = paint.measureText(testString)
             val textWidthDp = textWidthPx / ROBOLECTRIC_DENSITY
 
-            val availableDp = screenWidthDp - FontSizing.EDGE_PADDING_DP
+            // Content width is screen minus padding on BOTH sides
+            val contentWidthDp = screenWidthDp - (FontSizing.EDGE_PADDING_DP * 2)
 
-            println("$name: font=${fontSp}sp, text=${textWidthDp}dp, available=${availableDp}dp")
+            println("$name: font=${fontSp}sp, text=${textWidthDp}dp, content=${contentWidthDp}dp")
 
-            if (textWidthDp > availableDp) {
-                failures.add("$name: text (${textWidthDp}dp) > available (${availableDp}dp) at ${fontSp}sp")
+            if (textWidthDp > contentWidthDp) {
+                failures.add("$name: text (${textWidthDp}dp) > content (${contentWidthDp}dp) at ${fontSp}sp")
             }
         }
 
@@ -108,17 +109,18 @@ class TextMeasurementTest {
         val fontSp = FontSizing.calculateFontSp(narrowScreenDp)
         paint.textSize = fontSp * ROBOLECTRIC_DENSITY
 
-        val availableDp = narrowScreenDp - FontSizing.EDGE_PADDING_DP
+        // Content width is screen minus padding on BOTH sides
+        val contentWidthDp = narrowScreenDp - (FontSizing.EDGE_PADDING_DP * 2)
         val failures = mutableListOf<String>()
 
         for (chunk in worstCaseChunks) {
             val textWidthPx = paint.measureText(chunk)
             val textWidthDp = textWidthPx / ROBOLECTRIC_DENSITY
 
-            println("Chunk '$chunk': ${textWidthDp}dp (available: ${availableDp}dp)")
+            println("Chunk '$chunk': ${textWidthDp}dp (content: ${contentWidthDp}dp)")
 
-            if (textWidthDp > availableDp) {
-                failures.add("'$chunk' (${textWidthDp}dp) > available (${availableDp}dp)")
+            if (textWidthDp > contentWidthDp) {
+                failures.add("'$chunk' (${textWidthDp}dp) > content (${contentWidthDp}dp)")
             }
         }
 
@@ -165,7 +167,8 @@ class TextMeasurementTest {
         val fontSp = FontSizing.calculateFontSp(narrowScreenDp)
         paint.textSize = fontSp * ROBOLECTRIC_DENSITY
 
-        val availableDp = narrowScreenDp - FontSizing.EDGE_PADDING_DP
+        // Content width is screen minus padding on BOTH sides
+        val contentWidthDp = narrowScreenDp - (FontSizing.EDGE_PADDING_DP * 2)
         val failures = mutableListOf<String>()
 
         println("'counterrevolutionary' tokenized at ${fontSp}sp for ${narrowScreenDp}dp screen:")
@@ -173,17 +176,81 @@ class TextMeasurementTest {
         for (word in chunks) {
             val textWidthPx = paint.measureText(word.text)
             val textWidthDp = textWidthPx / ROBOLECTRIC_DENSITY
-            val fits = if (textWidthDp <= availableDp) "✓" else "✗"
+            val fits = if (textWidthDp <= contentWidthDp) "✓" else "✗"
 
-            println("  $fits '${word.text}' -> ${textWidthDp}dp (available: ${availableDp}dp)")
+            println("  $fits '${word.text}' -> ${textWidthDp}dp (content: ${contentWidthDp}dp)")
 
-            if (textWidthDp > availableDp) {
-                failures.add("'${word.text}' (${textWidthDp}dp) > available (${availableDp}dp)")
+            if (textWidthDp > contentWidthDp) {
+                failures.add("'${word.text}' (${textWidthDp}dp) > content (${contentWidthDp}dp)")
             }
         }
 
         if (failures.isNotEmpty()) {
             fail("Tokenizer output clips:\n${failures.joinToString("\n")}")
+        }
+    }
+
+    @Test
+    fun `verify anchor positioning does not clip on either side`() {
+        // This test verifies the actual anchor-based layout doesn't clip
+        // by checking that chars left of ORP fit left of anchor,
+        // and chars at/right of ORP fit right of anchor.
+        // Only tests words that fit within maxDisplayChars (longer words are split by tokenizer)
+
+        val testWords = listOf(
+            "Introduction",   // 12 chars, ORP at index 3 (max display)
+            "-revolution-",   // 12 chars with hyphens (max display)
+            "programming",    // 11 chars, ORP at index 3
+            "test"            // 4 chars, ORP at index 1
+        )
+
+        val anchorPosition = TimingSettings.DEFAULT_ANCHOR_POSITION  // 0.42
+        val failures = mutableListOf<String>()
+
+        for ((screenWidthDp, screenName) in screenConfigs) {
+            val fontSp = FontSizing.calculateFontSp(screenWidthDp, DEFAULT_MAX_DISPLAY_CHARS, anchorPosition)
+            paint.textSize = fontSp * ROBOLECTRIC_DENSITY
+
+            // Content area (with padding on both sides)
+            val contentWidthDp = screenWidthDp - (FontSizing.EDGE_PADDING_DP * 2)
+            val anchorFromLeftDp = contentWidthDp * anchorPosition
+            val anchorFromRightDp = contentWidthDp * (1 - anchorPosition)
+
+            for (word in testWords) {
+                val charWidthPx = paint.measureText("M")
+                val charWidthDp = charWidthPx / ROBOLECTRIC_DENSITY
+
+                // Calculate ORP index (same logic as ReaderScreen)
+                val orpIndex = when {
+                    word.length <= 1 -> 0
+                    word.length <= 5 -> 1
+                    word.length <= 9 -> 2
+                    word.length <= 13 -> 3
+                    else -> 4
+                }
+
+                // Chars left of ORP need to fit left of anchor
+                val charsLeftOfOrp = orpIndex.toFloat()
+                // Chars at and right of ORP (including ORP itself) need to fit right of anchor
+                val charsRightOfOrp = (word.length - orpIndex).toFloat()
+
+                val leftNeededDp = charsLeftOfOrp * charWidthDp
+                val rightNeededDp = charsRightOfOrp * charWidthDp
+
+                val leftFits = leftNeededDp <= anchorFromLeftDp
+                val rightFits = rightNeededDp <= anchorFromRightDp
+
+                if (!leftFits || !rightFits) {
+                    val side = if (!leftFits) "LEFT" else "RIGHT"
+                    val needed = if (!leftFits) leftNeededDp else rightNeededDp
+                    val available = if (!leftFits) anchorFromLeftDp else anchorFromRightDp
+                    failures.add("$screenName: '$word' clips $side (${needed}dp > ${available}dp available)")
+                }
+            }
+        }
+
+        if (failures.isNotEmpty()) {
+            fail("Anchor positioning clips:\n${failures.joinToString("\n")}")
         }
     }
 

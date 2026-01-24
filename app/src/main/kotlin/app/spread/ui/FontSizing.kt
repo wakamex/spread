@@ -33,12 +33,52 @@ object FontSizing {
     private const val ORP_FRACTION = 0.25f
 
     /**
+     * Calculate optimal font size using runtime-measured character width.
+     * This provides accurate sizing across all devices regardless of font metrics.
+     *
+     * @param screenWidthDp Screen width in dp
+     * @param measuredCharWidthDp Actual measured character width at BASE_FONT_SP
+     * @param maxDisplayChars Maximum characters to fit (from settings)
+     * @param anchorPosition Anchor position as fraction of content width (default 0.42)
+     * @return Font size in sp, scaled to fit configured chars
+     */
+    fun calculateFontSpFromMeasured(
+        screenWidthDp: Float,
+        measuredCharWidthDp: Float,
+        maxDisplayChars: Int = TimingSettings.DEFAULT_MAX_DISPLAY_CHARS,
+        anchorPosition: Float = TimingSettings.DEFAULT_ANCHOR_POSITION
+    ): Float {
+        // Content width is screen minus edge padding on both sides
+        val contentWidthDp = screenWidthDp - (EDGE_PADDING_DP * 2)
+
+        // Anchor position is relative to content width
+        val anchorFromLeftDp = contentWidthDp * anchorPosition
+        val anchorFromRightDp = contentWidthDp * (1 - anchorPosition)
+
+        // Word extends: ORP_FRACTION left, (1 - ORP_FRACTION) right
+        val leftChars = maxDisplayChars * ORP_FRACTION
+        val rightChars = maxDisplayChars * (1 - ORP_FRACTION)
+
+        val maxCharWidthFromLeft = if (leftChars > 0) anchorFromLeftDp / leftChars else Float.MAX_VALUE
+        val maxCharWidthFromRight = if (rightChars > 0) anchorFromRightDp / rightChars else Float.MAX_VALUE
+
+        val requiredCharWidthDp = minOf(maxCharWidthFromLeft, maxCharWidthFromRight)
+
+        // Scale font proportionally: if we need X dp per char but measured Y dp at base font,
+        // then fontSize = baseFontSp * (X / Y)
+        val scaledFontSp = BASE_FONT_SP * (requiredCharWidthDp / measuredCharWidthDp)
+
+        // Cap at base size (don't make font larger than 48sp)
+        return scaledFontSp.coerceAtMost(BASE_FONT_SP)
+    }
+
+    /**
      * Calculate optimal font size to fit maxDisplayChars on the given screen width,
-     * accounting for anchor position and ORP offset.
+     * using hardcoded BASE_CHAR_WIDTH_DP assumption. Used for tests and previews.
      *
      * @param screenWidthDp Screen width in dp
      * @param maxDisplayChars Maximum characters to fit (from settings)
-     * @param anchorPosition Anchor position as fraction of screen width (default 0.42)
+     * @param anchorPosition Anchor position as fraction of content width (default 0.42)
      * @return Font size in sp, scaled to fit configured chars
      */
     fun calculateFontSp(
@@ -46,26 +86,13 @@ object FontSizing {
         maxDisplayChars: Int = TimingSettings.DEFAULT_MAX_DISPLAY_CHARS,
         anchorPosition: Float = TimingSettings.DEFAULT_ANCHOR_POSITION
     ): Float {
-        // Calculate available space on each side of anchor
-        val leftOfAnchorDp = (screenWidthDp * anchorPosition) - EDGE_PADDING_DP
-        val rightOfAnchorDp = (screenWidthDp * (1 - anchorPosition)) - EDGE_PADDING_DP
-
-        // Word extends: ORP_FRACTION left, (1 - ORP_FRACTION) right
-        // Constraint: leftChars must fit in leftSpace, rightChars must fit in rightSpace
-        // maxCharWidth = min(leftSpace / leftChars, rightSpace / rightChars)
-        val leftChars = maxDisplayChars * ORP_FRACTION
-        val rightChars = maxDisplayChars * (1 - ORP_FRACTION)
-
-        val maxCharWidthFromLeft = if (leftChars > 0) leftOfAnchorDp / leftChars else Float.MAX_VALUE
-        val maxCharWidthFromRight = if (rightChars > 0) rightOfAnchorDp / rightChars else Float.MAX_VALUE
-
-        val requiredCharWidthDp = minOf(maxCharWidthFromLeft, maxCharWidthFromRight)
-
-        // Scale font proportionally to char width
-        val scaledFontSp = BASE_FONT_SP * (requiredCharWidthDp / BASE_CHAR_WIDTH_DP)
-
-        // Cap at base size (don't make font larger than 48sp)
-        return scaledFontSp.coerceAtMost(BASE_FONT_SP)
+        // Use hardcoded char width with safety margin for tests/previews
+        return calculateFontSpFromMeasured(
+            screenWidthDp = screenWidthDp,
+            measuredCharWidthDp = BASE_CHAR_WIDTH_DP * 1.05f,  // 5% safety margin
+            maxDisplayChars = maxDisplayChars,
+            anchorPosition = anchorPosition
+        )
     }
 
     /**
@@ -99,11 +126,13 @@ object FontSizing {
         val leftChars = maxDisplayChars * ORP_FRACTION
         val rightChars = maxDisplayChars * (1 - ORP_FRACTION)
 
-        val leftOfAnchorDp = (screenWidthDp * anchorPosition) - EDGE_PADDING_DP
-        val rightOfAnchorDp = (screenWidthDp * (1 - anchorPosition)) - EDGE_PADDING_DP
+        // Content width is screen minus padding on both sides
+        val contentWidthDp = screenWidthDp - (EDGE_PADDING_DP * 2)
+        val anchorFromLeftDp = contentWidthDp * anchorPosition
+        val anchorFromRightDp = contentWidthDp * (1 - anchorPosition)
 
-        val leftFits = leftChars * charWidthDp <= leftOfAnchorDp
-        val rightFits = rightChars * charWidthDp <= rightOfAnchorDp
+        val leftFits = leftChars * charWidthDp <= anchorFromLeftDp
+        val rightFits = rightChars * charWidthDp <= anchorFromRightDp
 
         return leftFits && rightFits
     }
