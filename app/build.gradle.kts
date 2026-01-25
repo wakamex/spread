@@ -43,7 +43,7 @@ tasks.configureEach {
 
 android {
     namespace = "app.spread"
-    compileSdk = 34
+    compileSdk = 35
 
     signingConfigs {
         create("release") {
@@ -59,7 +59,7 @@ android {
     defaultConfig {
         applicationId = "app.spread"
         minSdk = 21  // Android 5.0 Lollipop (2014) - broadest reasonable compatibility
-        targetSdk = 34
+        targetSdk = 35
 
         ndk {
             abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
