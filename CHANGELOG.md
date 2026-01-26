@@ -9,6 +9,11 @@
 - **Rust EPUB parser** with JNI bindings for all 4 Android ABIs (arm64-v8a, armeabi-v7a, x86, x86_64)
 - **Functional core architecture** with pure reducer pattern (State + Action → Update with Effects)
 - **minSdk 21** (Android 5.0 Lollipop) for broad device compatibility
+- **ByteArray book storage** instead of file paths for EPUB data:
+  - **JNI safety**: Avoids race conditions with file permissions across Kotlin-Rust boundary
+  - **SAF independence**: Android's Storage Access Framework URIs are slow and unreliable; reading bytes once at import decouples reader from flaky filesystem
+  - **Instant re-parsing**: When user changes maxChunkChars, re-parsing from RAM is instantaneous vs disk I/O latency
+  - **Trade-off**: Higher memory (~2-5MB per book) accepted for reliability and UX smoothness
 
 #### RSVP Reader
 - Word display with **ORP (Optimal Recognition Point) highlighting**
