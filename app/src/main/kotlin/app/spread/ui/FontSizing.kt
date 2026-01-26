@@ -6,7 +6,7 @@ import app.spread.domain.TimingSettings
  * Font size calculation for RSVP word display.
  *
  * Strategy: Calculate optimal font size to fit displayed text on screen,
- * accounting for off-center anchor position. With ORP at ~25% of word
+ * accounting for off-center anchor position. With ORP at ~35% of word
  * and anchor at 42% of screen, the right side of the word extends further
  * than center-aligned text would.
  *
@@ -27,10 +27,11 @@ object FontSizing {
 
     /**
      * ORP position as fraction of word length.
-     * For 12-char words, ORP is at index 3 = 25% into word.
-     * This means 75% of the word extends RIGHT of the ORP.
+     * Research shows ORP is approximately 35% into the word.
+     * For 12-char words, ORP is at index 4 = 33% into word.
+     * This means 65% of the word extends RIGHT of the ORP.
      */
-    private const val ORP_FRACTION = 0.25f
+    private const val ORP_FRACTION = 0.35f
 
     /**
      * Calculate optimal font size using runtime-measured character width.

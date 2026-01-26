@@ -4,6 +4,13 @@ package app.spread.domain
  * Text tokenization into Words with pre-computed metadata.
  * Pure functions - no side effects.
  *
+ * ⚠️ TEST-ONLY IMPLEMENTATION ⚠️
+ * Production code uses the Rust tokenizer via NativeParser.
+ * This Kotlin implementation exists for JUnit/Paparazzi tests that can't load native libraries.
+ *
+ * IMPORTANT: If you modify the Rust tokenizer (rust/src/tokenizer.rs), you MUST update this
+ * file to match. Drift between implementations will cause test/production behavior mismatch.
+ *
  * Includes morpheme-based word splitting for long words (≥13 chars) to ensure
  * they fit on screen. Mirrors the Rust tokenizer logic.
  */

@@ -198,10 +198,10 @@ class TextMeasurementTest {
         // Only tests words that fit within maxDisplayChars (longer words are split by tokenizer)
 
         val testWords = listOf(
-            "Introduction",   // 12 chars, ORP at index 3 (max display)
+            "Introduction",   // 12 chars, ORP at index 4 (35% of 12)
             "-revolution-",   // 12 chars with hyphens (max display)
-            "programming",    // 11 chars, ORP at index 3
-            "test"            // 4 chars, ORP at index 1
+            "programming",    // 11 chars, ORP at index 3 (35% of 11)
+            "test"            // 4 chars, ORP at index 1 (35% of 4)
         )
 
         val anchorPosition = TimingSettings.DEFAULT_ANCHOR_POSITION  // 0.42
@@ -220,14 +220,8 @@ class TextMeasurementTest {
                 val charWidthPx = paint.measureText("M")
                 val charWidthDp = charWidthPx / ROBOLECTRIC_DENSITY
 
-                // Calculate ORP index (same logic as ReaderScreen)
-                val orpIndex = when {
-                    word.length <= 1 -> 0
-                    word.length <= 5 -> 1
-                    word.length <= 9 -> 2
-                    word.length <= 13 -> 3
-                    else -> 4
-                }
+                // Calculate ORP index (same logic as ReaderScreen - 35% into word)
+                val orpIndex = if (word.isEmpty()) 0 else (word.length * 0.35f).toInt().coerceAtLeast(0)
 
                 // Chars left of ORP need to fit left of anchor
                 val charsLeftOfOrp = orpIndex.toFloat()

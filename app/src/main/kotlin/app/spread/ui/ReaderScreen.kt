@@ -304,17 +304,11 @@ private fun WordDisplay(
 
 /**
  * Calculate Optimal Recognition Point (ORP) - the letter the eye focuses on.
- * Typically around 30% into the word.
+ * Research shows ORP is approximately 35% into the word.
  */
 private fun calculateORP(word: String): Int {
-    val len = word.length
-    return when {
-        len <= 1 -> 0
-        len <= 5 -> 1
-        len <= 9 -> 2
-        len <= 13 -> 3
-        else -> 4
-    }
+    if (word.isEmpty()) return 0
+    return (word.length * 0.35f).toInt().coerceAtLeast(0)
 }
 
 @Composable

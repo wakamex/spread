@@ -14,6 +14,11 @@
   - **SAF independence**: Android's Storage Access Framework URIs are slow and unreliable; reading bytes once at import decouples reader from flaky filesystem
   - **Instant re-parsing**: When user changes maxChunkChars, re-parsing from RAM is instantaneous vs disk I/O latency
   - **Trade-off**: Higher memory (~2-5MB per book) accepted for reliability and UX smoothness
+- **Dual tokenizer implementation** (Rust for production, Kotlin for tests):
+  - Production uses Rust tokenizer via NativeParser for actual EPUB parsing
+  - Kotlin tokenizer mirrors Rust logic for JUnit/Paparazzi tests (can't load native libs)
+  - **Risk**: Implementations can drift; changes to Rust tokenizer must be synced to Kotlin
+  - **Trade-off**: Accepted for test infrastructure simplicity vs complex JNI test setup
 
 #### RSVP Reader
 - Word display with **ORP (Optimal Recognition Point) highlighting**
