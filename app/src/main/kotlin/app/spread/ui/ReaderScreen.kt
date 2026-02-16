@@ -5,6 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,18 +35,21 @@ private val Orangered = Color(0xFFFF4500)
 fun ReaderScreen(
     state: ReaderState,
     onToggle: () -> Unit,
-    onPrev: () -> Unit,
-    onNext: () -> Unit,
     onSeek: (Float) -> Unit,
     onWpmChange: (Int) -> Unit,
     onSettingsClick: () -> Unit,
     onOpenBook: () -> Unit = {},
     onRestart: () -> Unit = {},
+    onSkipWords: (Int) -> Unit = {},
+    onPrevChapter: () -> Unit = {},
+    onNextChapter: () -> Unit = {},
+    onJumpToChapter: (Int) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val word = state.currentWord?.text ?: ""
     val chapter = state.currentChapter
     val effectiveWpm = state.effectiveWpmInfo
+    var showToc by remember { mutableStateOf(false) }
 
     // Zen mode: animate UI alpha instead of removing from layout (prevents word position shift)
     val uiAlpha by animateFloatAsState(
@@ -69,8 +74,23 @@ fun ReaderScreen(
             chapterTitle = chapter?.title ?: "",
             onOpenBook = onOpenBook,
             onSettingsClick = onSettingsClick,
+            onTocClick = { if (state.book != null) showToc = true },
             alpha = uiAlpha
         )
+
+        // Table of Contents bottom sheet
+        if (showToc && state.book != null) {
+            TocBottomSheet(
+                chapters = state.book.chapters,
+                currentChapterIndex = state.position.chapterIndex,
+                effectiveWpmInfo = effectiveWpm,
+                onDismiss = { showToc = false },
+                onChapterSelected = { index ->
+                    onJumpToChapter(index)
+                    showToc = false
+                }
+            )
+        }
 
         // Word display area
         val configuration = LocalConfiguration.current
@@ -140,8 +160,12 @@ fun ReaderScreen(
             effectiveWpm = effectiveWpm,
             progress = state.progress,
             baseWpm = state.settings.baseWpm,
+            onToggle = onToggle,
             onSeek = onSeek,
             onWpmChange = onWpmChange,
+            onSkipWords = onSkipWords,
+            onPrevChapter = onPrevChapter,
+            onNextChapter = onNextChapter,
             alpha = uiAlpha
         )
     }
@@ -152,6 +176,7 @@ private fun TopBar(
     chapterTitle: String,
     onOpenBook: () -> Unit,
     onSettingsClick: () -> Unit,
+    onTocClick: () -> Unit,
     alpha: Float = 1f
 ) {
     Row(
@@ -163,13 +188,27 @@ private fun TopBar(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = chapterTitle,
-            color = Color.White.copy(alpha = 0.7f),
-            fontSize = 14.sp,
-            maxLines = 1,
-            modifier = Modifier.weight(1f)
-        )
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .clickable(onClick = onTocClick),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = chapterTitle,
+                color = Color.White.copy(alpha = 0.7f),
+                fontSize = 14.sp,
+                maxLines = 1,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            if (chapterTitle.isNotEmpty()) {
+                Text(
+                    text = " ▼",
+                    color = Color.White.copy(alpha = 0.5f),
+                    fontSize = 14.sp
+                )
+            }
+        }
 
         Row {
             IconButton(onClick = onOpenBook) {
@@ -317,8 +356,12 @@ private fun BottomBar(
     effectiveWpm: EffectiveWpmInfo?,
     progress: Progress,
     baseWpm: Int,
+    onToggle: () -> Unit,
     onSeek: (Float) -> Unit,
     onWpmChange: (Int) -> Unit,
+    onSkipWords: (Int) -> Unit,
+    onPrevChapter: () -> Unit,
+    onNextChapter: () -> Unit,
     alpha: Float = 1f
 ) {
     Column(
@@ -348,20 +391,20 @@ private fun BottomBar(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Chapter progress (rounded ends to match slider thumb)
-        LinearProgressIndicator(
-            progress = progress.chapter,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(4.dp),
-            color = Color.White,
-            trackColor = Color.White.copy(alpha = 0.3f),
-            strokeCap = StrokeCap.Round
+        // Chapter progress (draggable slider)
+        Slider(
+            value = progress.chapter,
+            onValueChange = { onSeek(it) },
+            valueRange = 0f..1f,
+            modifier = Modifier.fillMaxWidth(),
+            colors = SliderDefaults.colors(
+                thumbColor = Color.White,
+                activeTrackColor = Color.White,
+                inactiveTrackColor = Color.White.copy(alpha = 0.3f)
+            )
         )
 
-        Spacer(modifier = Modifier.height(4.dp))
-
-        // Book progress
+        // Book progress (read-only)
         LinearProgressIndicator(
             progress = progress.book,
             modifier = Modifier
@@ -373,6 +416,38 @@ private fun BottomBar(
         )
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        // Navigation buttons row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onPrevChapter) {
+                Text("⏮", fontSize = 24.sp, color = Color.White)
+            }
+            IconButton(onClick = { onSkipWords(-10) }) {
+                Text("⏪", fontSize = 24.sp, color = Color.White)
+            }
+            IconButton(
+                onClick = onToggle,
+                modifier = Modifier.size(56.dp)
+            ) {
+                Text(
+                    text = if (playing) "⏸" else "▶",
+                    fontSize = 32.sp,
+                    color = Color.White
+                )
+            }
+            IconButton(onClick = { onSkipWords(10) }) {
+                Text("⏩", fontSize = 24.sp, color = Color.White)
+            }
+            IconButton(onClick = onNextChapter) {
+                Text("⏭", fontSize = 24.sp, color = Color.White)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         // WPM slider with centered label
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -408,6 +483,90 @@ private fun formatTime(minutes: Double): String {
             val hours = (minutes / 60).toInt()
             val mins = (minutes % 60).roundToInt()
             "${hours}h ${mins}m"
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TocBottomSheet(
+    chapters: List<Chapter>,
+    currentChapterIndex: Int,
+    effectiveWpmInfo: EffectiveWpmInfo?,
+    onDismiss: () -> Unit,
+    onChapterSelected: (Int) -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState()
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = Color(0xFF1A1A1A)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 32.dp)
+        ) {
+            Text(
+                text = "Table of Contents",
+                color = Color.White,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+
+            Divider(color = Color.White.copy(alpha = 0.2f))
+
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                itemsIndexed(chapters) { index, chapter ->
+                    val isCurrent = index == currentChapterIndex
+                    val chapterTime = effectiveWpmInfo?.let {
+                        val wordsInChapter = chapter.stats.wordCount
+                        val wpm = it.chapter.wpm
+                        if (wpm > 0) wordsInChapter.toDouble() / wpm else 0.0
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onChapterSelected(index) }
+                            .background(if (isCurrent) Orangered.copy(alpha = 0.2f) else Color.Transparent)
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            if (isCurrent) {
+                                Text(
+                                    text = "▶ ",
+                                    color = Orangered,
+                                    fontSize = 14.sp
+                                )
+                            }
+                            Text(
+                                text = "${index + 1}. ${chapter.title}",
+                                color = if (isCurrent) Orangered else Color.White,
+                                fontSize = 14.sp,
+                                maxLines = 2
+                            )
+                        }
+
+                        chapterTime?.let {
+                            Text(
+                                text = formatTime(it),
+                                color = Color.White.copy(alpha = 0.6f),
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

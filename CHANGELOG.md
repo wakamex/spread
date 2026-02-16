@@ -138,6 +138,17 @@
 - Shows estimated time remaining
 - Updates in real-time as settings change (<1ms recalculation)
 
+#### Book Navigation
+- **Navigation buttons**: ⏮ prev chapter, ⏪ back 10 words, ▶/⏸ play/pause, ⏩ forward 10 words, ⏭ next chapter
+- **Draggable chapter progress slider** replaces static progress bar for seeking within chapter
+- **Table of Contents bottom sheet**: tap chapter title (with ▼ indicator) to open TOC
+  - Shows all chapters with estimated reading time
+  - Current chapter highlighted in orangered
+  - Tap to jump to any chapter
+- **PrevChapter behavior**: mid-chapter goes to chapter start; at chapter start goes to previous chapter
+- **SkipWords crosses chapter boundaries**: skipping forward/backward seamlessly moves between chapters
+- All navigation actions pause playback for safety
+
 #### UI Polish
 - Dark theme with true black (#000000) background
 - Rounded progress bar ends matching slider thumb
@@ -247,9 +258,9 @@
 - [ ] Library screen with imported books
 - [ ] Swipe left/right for prev/next word
 - [ ] Volume buttons to adjust WPM
-- [ ] Chapter list with tap to jump
+- [x] ~~Chapter list with tap to jump~~ ✓
 - [x] ~~Zen mode (hide UI during playback, show on pause)~~ ✓
-- [ ] Scrub progress bar to seek
+- [x] ~~Scrub progress bar to seek~~ ✓
 
 ### Lower Priority (P2)
 - [ ] PDF parser

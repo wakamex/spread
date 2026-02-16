@@ -97,6 +97,9 @@ sealed interface Action {
     // Navigation
     data object NextWord : Action
     data object PrevWord : Action
+    data class SkipWords(val count: Int) : Action  // Positive = forward, negative = backward
+    data object NextChapter : Action
+    data object PrevChapter : Action
     data class JumpToChapter(val index: Int) : Action
     data class JumpToPosition(val position: Position) : Action
     data class SeekChapter(val fraction: Float) : Action  // 0.0 to 1.0
@@ -235,6 +238,49 @@ fun reduce(state: ReaderState, action: Action): Update {
                     add(Effect.CancelTick)
                     state.book?.id?.let { add(Effect.SaveProgress(it, newPosition)) }
                 }
+            )
+        }
+
+        is Action.SkipWords -> {
+            val newPosition = state.skipWords(action.count) ?: state.position
+            Update(
+                state = state.copy(position = newPosition, playing = false).recalculateWpm(),
+                effects = buildList {
+                    add(Effect.CancelTick)
+                    state.book?.id?.let { add(Effect.SaveProgress(it, newPosition)) }
+                }
+            )
+        }
+
+        Action.NextChapter -> {
+            val book = state.book ?: return Update(state)
+            val nextIndex = (state.position.chapterIndex + 1).coerceAtMost(book.chapters.lastIndex)
+            val newPosition = Position(nextIndex, 0)
+            Update(
+                state = state.copy(position = newPosition, playing = false).recalculateWpm(),
+                effects = listOf(
+                    Effect.CancelTick,
+                    Effect.SaveProgress(book.id, newPosition)
+                )
+            )
+        }
+
+        Action.PrevChapter -> {
+            val book = state.book ?: return Update(state)
+            // If we're past the first word of the chapter, go to start of current chapter
+            // Otherwise go to start of previous chapter
+            val newPosition = if (state.position.wordIndex > 0) {
+                Position(state.position.chapterIndex, 0)
+            } else {
+                val prevIndex = (state.position.chapterIndex - 1).coerceAtLeast(0)
+                Position(prevIndex, 0)
+            }
+            Update(
+                state = state.copy(position = newPosition, playing = false).recalculateWpm(),
+                effects = listOf(
+                    Effect.CancelTick,
+                    Effect.SaveProgress(book.id, newPosition)
+                )
             )
         }
 
@@ -434,6 +480,56 @@ private fun ReaderState.prevPosition(): Position? {
 
         else -> null
     }
+}
+
+private fun ReaderState.skipWords(count: Int): Position? {
+    val book = book ?: return null
+    if (count == 0) return position
+
+    var chapterIdx = position.chapterIndex
+    var wordIdx = position.wordIndex
+
+    if (count > 0) {
+        // Skip forward
+        var remaining = count
+        while (remaining > 0 && chapterIdx < book.chapters.size) {
+            val chapter = book.chapters[chapterIdx]
+            val wordsLeftInChapter = chapter.words.size - wordIdx - 1
+            if (remaining <= wordsLeftInChapter) {
+                wordIdx += remaining
+                remaining = 0
+            } else {
+                remaining -= (wordsLeftInChapter + 1)
+                chapterIdx++
+                wordIdx = 0
+            }
+        }
+        // Clamp to end of book
+        if (chapterIdx >= book.chapters.size) {
+            chapterIdx = book.chapters.lastIndex
+            wordIdx = book.chapters[chapterIdx].words.lastIndex.coerceAtLeast(0)
+        }
+    } else {
+        // Skip backward
+        var remaining = -count
+        while (remaining > 0 && (chapterIdx > 0 || wordIdx > 0)) {
+            if (remaining <= wordIdx) {
+                wordIdx -= remaining
+                remaining = 0
+            } else {
+                remaining -= (wordIdx + 1)
+                if (chapterIdx > 0) {
+                    chapterIdx--
+                    wordIdx = book.chapters[chapterIdx].words.lastIndex.coerceAtLeast(0)
+                } else {
+                    wordIdx = 0
+                    remaining = 0
+                }
+            }
+        }
+    }
+
+    return Position(chapterIdx, wordIdx)
 }
 
 private fun ReaderState.recalculateWpm(): ReaderState {

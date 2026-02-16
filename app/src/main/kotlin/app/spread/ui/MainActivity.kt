@@ -78,8 +78,6 @@ class MainActivity : ComponentActivity() {
                     ReaderScreen(
                         state = state,
                         onToggle = viewModel::toggle,
-                        onPrev = viewModel::prevWord,
-                        onNext = viewModel::nextWord,
                         onSeek = viewModel::seekChapter,
                         onWpmChange = viewModel::setWpm,
                         onSettingsClick = { showSettings = true },
@@ -89,7 +87,11 @@ class MainActivity : ComponentActivity() {
                                 "application/octet-stream"
                             ))
                         },
-                        onRestart = viewModel::restartBook
+                        onRestart = viewModel::restartBook,
+                        onSkipWords = viewModel::skipWords,
+                        onPrevChapter = viewModel::prevChapter,
+                        onNextChapter = viewModel::nextChapter,
+                        onJumpToChapter = viewModel::jumpToChapter
                     )
 
                     if (showSettings) {

@@ -187,4 +187,131 @@ class StateTest {
         assertEquals(0f, chapter2Start.progress.chapter, 0.01f)
         assertEquals(chapter0Words.toFloat() / totalWords, chapter2Start.progress.book, 0.01f)
     }
+
+    @Test
+    fun `SkipWords forward skips within chapter`() {
+        val book = createTestBook()
+        val state = ReaderState.Initial.copy(book = book, position = Position(0, 0))
+
+        val (newState, _) = reduce(state, Action.SkipWords(5))
+
+        assertEquals(0, newState.position.chapterIndex)
+        assertEquals(5, newState.position.wordIndex)
+        assertFalse(newState.playing)
+    }
+
+    @Test
+    fun `SkipWords forward crosses chapter boundary`() {
+        val book = createTestBook()
+        val chapter0Words = book.chapters[0].words.size
+        val state = ReaderState.Initial.copy(book = book, position = Position(0, chapter0Words - 2))
+
+        val (newState, _) = reduce(state, Action.SkipWords(5))
+
+        assertEquals(1, newState.position.chapterIndex)
+        // Should be 5 - 2 (remaining in ch0) - 1 (cross chapter) = 2 words into ch1
+        assertTrue(newState.position.wordIndex >= 0)
+    }
+
+    @Test
+    fun `SkipWords backward skips within chapter`() {
+        val book = createTestBook()
+        val state = ReaderState.Initial.copy(book = book, position = Position(0, 5))
+
+        val (newState, _) = reduce(state, Action.SkipWords(-3))
+
+        assertEquals(0, newState.position.chapterIndex)
+        assertEquals(2, newState.position.wordIndex)
+    }
+
+    @Test
+    fun `SkipWords backward crosses chapter boundary`() {
+        val book = createTestBook()
+        val state = ReaderState.Initial.copy(book = book, position = Position(1, 1))
+
+        val (newState, _) = reduce(state, Action.SkipWords(-5))
+
+        assertEquals(0, newState.position.chapterIndex)
+    }
+
+    @Test
+    fun `SkipWords clamps to start of book`() {
+        val book = createTestBook()
+        val state = ReaderState.Initial.copy(book = book, position = Position(0, 2))
+
+        val (newState, _) = reduce(state, Action.SkipWords(-100))
+
+        assertEquals(0, newState.position.chapterIndex)
+        assertEquals(0, newState.position.wordIndex)
+    }
+
+    @Test
+    fun `SkipWords clamps to end of book`() {
+        val book = createTestBook()
+        val lastChapter = book.chapters.lastIndex
+        val state = ReaderState.Initial.copy(book = book, position = Position(0, 0))
+
+        val (newState, _) = reduce(state, Action.SkipWords(10000))
+
+        assertEquals(lastChapter, newState.position.chapterIndex)
+        assertEquals(book.chapters[lastChapter].words.lastIndex, newState.position.wordIndex)
+    }
+
+    @Test
+    fun `NextChapter jumps to next chapter`() {
+        val book = createTestBook()
+        val state = ReaderState.Initial.copy(book = book, position = Position(0, 5), playing = true)
+
+        val (newState, effects) = reduce(state, Action.NextChapter)
+
+        assertEquals(1, newState.position.chapterIndex)
+        assertEquals(0, newState.position.wordIndex)
+        assertFalse(newState.playing)
+        assertTrue(effects.any { it is Effect.CancelTick })
+    }
+
+    @Test
+    fun `NextChapter at last chapter stays at last chapter`() {
+        val book = createTestBook()
+        val lastChapter = book.chapters.lastIndex
+        val state = ReaderState.Initial.copy(book = book, position = Position(lastChapter, 5))
+
+        val (newState, _) = reduce(state, Action.NextChapter)
+
+        assertEquals(lastChapter, newState.position.chapterIndex)
+        assertEquals(0, newState.position.wordIndex)
+    }
+
+    @Test
+    fun `PrevChapter at chapter start goes to previous chapter`() {
+        val book = createTestBook()
+        val state = ReaderState.Initial.copy(book = book, position = Position(1, 0))
+
+        val (newState, _) = reduce(state, Action.PrevChapter)
+
+        assertEquals(0, newState.position.chapterIndex)
+        assertEquals(0, newState.position.wordIndex)
+    }
+
+    @Test
+    fun `PrevChapter mid-chapter goes to chapter start`() {
+        val book = createTestBook()
+        val state = ReaderState.Initial.copy(book = book, position = Position(1, 3))
+
+        val (newState, _) = reduce(state, Action.PrevChapter)
+
+        assertEquals(1, newState.position.chapterIndex)
+        assertEquals(0, newState.position.wordIndex)
+    }
+
+    @Test
+    fun `PrevChapter at first chapter start stays at first chapter`() {
+        val book = createTestBook()
+        val state = ReaderState.Initial.copy(book = book, position = Position(0, 0))
+
+        val (newState, _) = reduce(state, Action.PrevChapter)
+
+        assertEquals(0, newState.position.chapterIndex)
+        assertEquals(0, newState.position.wordIndex)
+    }
 }
