@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.spread.BuildConfig
 import app.spread.domain.*
 import kotlin.math.roundToInt
 
@@ -33,6 +34,14 @@ fun SettingsSheet(
                 .navigationBarsPadding()
                 .padding(bottom = 32.dp)
         ) {
+            Text(
+                text = "v${BuildConfig.VERSION_NAME} (${BuildConfig.GIT_COMMIT})",
+                color = Color.White.copy(alpha = 0.3f),
+                fontSize = 11.sp,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+
             Text(
                 text = "Reading Settings",
                 color = Color.White,

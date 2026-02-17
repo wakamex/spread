@@ -47,3 +47,7 @@ rust/target/
 keystore.properties
 *.keystore
 *.jks
+
+# Google Play service account
+play-service-account.json
+*.json.bak
