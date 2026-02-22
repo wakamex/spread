@@ -79,8 +79,8 @@ android {
         ndk {
             abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
         }
-        versionCode = 6
-        versionName = "1.1.1"
+        versionCode = 8
+        versionName = "1.2.0"
 
         buildConfigField("String", "GIT_COMMIT", "\"${getGitCommit()}\"")
 
