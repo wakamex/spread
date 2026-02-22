@@ -12,6 +12,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import com.google.firebase.Firebase
+import com.google.firebase.crashlytics.crashlytics
 import java.security.MessageDigest
 
 /**
@@ -115,6 +117,9 @@ class BookRepository(private val context: Context) {
                 ?: throw IllegalStateException("Failed to parse EPUB")
 
             nativeBook.toDomain(id)
+        }.onFailure {
+            Firebase.crashlytics.log("loadBook: uri=$uri")
+            Firebase.crashlytics.recordException(it)
         }
     }
 
@@ -130,6 +135,9 @@ class BookRepository(private val context: Context) {
                     ?: throw IllegalStateException("Failed to parse EPUB")
 
                 nativeBook.toDomain(id)
+            }.onFailure {
+                Firebase.crashlytics.log("loadBookFromBytes: fileName=$fileName, ${data.size} bytes")
+                Firebase.crashlytics.recordException(it)
             }
         }
 

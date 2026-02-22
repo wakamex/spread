@@ -3,9 +3,12 @@ import java.util.Properties
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
     id("app.cash.paparazzi")
     id("com.github.triplet.play")
+    id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
 }
 
 // Load signing config from keystore.properties (not committed to git)
@@ -70,7 +73,7 @@ android {
 
     defaultConfig {
         applicationId = "app.spread"
-        minSdk = 21  // Android 5.0 Lollipop (2014) - broadest reasonable compatibility
+        minSdk = 23  // Android 6.0 Marshmallow (2015) - required by Firebase Crashlytics
         targetSdk = 35
 
         ndk {
@@ -113,9 +116,6 @@ android {
         buildConfig = true
     }
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.5"
-    }
 
     packaging {
         resources {
@@ -160,6 +160,11 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     androidTestImplementation(platform("androidx.compose:compose-bom:2023.10.01"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+
+    // Firebase
+    implementation(platform("com.google.firebase:firebase-bom:34.9.0"))
+    implementation("com.google.firebase:firebase-crashlytics")
+    implementation("com.google.firebase:firebase-analytics")
 
     // Debug
     debugImplementation("androidx.compose.ui:ui-tooling")

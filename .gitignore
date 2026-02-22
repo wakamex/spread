@@ -50,4 +50,7 @@ keystore.properties
 
 # Google Play service account
 play-service-account.json
+
+# Firebase
+app/google-services.json
 *.json.bak

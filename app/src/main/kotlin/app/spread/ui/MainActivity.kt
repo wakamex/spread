@@ -17,6 +17,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.spread.data.NativeParser
 import app.spread.data.toDomain
 import app.spread.domain.*
+import com.google.firebase.Firebase
+import com.google.firebase.crashlytics.crashlytics
 import app.spread.ui.theme.SpreadTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -135,6 +137,8 @@ private suspend fun loadEpubFromUri(
         Pair(Pair(book, source), null)
     } catch (e: Exception) {
         e.printStackTrace()
+        Firebase.crashlytics.log("loadEpubFromUri: uri=$uri")
+        Firebase.crashlytics.recordException(e)
         Pair(null, "${e.javaClass.simpleName}: ${e.message}")
     }
 }
@@ -159,6 +163,8 @@ private suspend fun loadDemoBook(
         Pair(book, source)
     } catch (e: Exception) {
         e.printStackTrace()
+        Firebase.crashlytics.log("loadDemoBook: failed loading demo.epub")
+        Firebase.crashlytics.recordException(e)
         null
     }
 }
