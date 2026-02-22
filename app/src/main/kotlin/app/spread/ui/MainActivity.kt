@@ -48,7 +48,7 @@ class MainActivity : ComponentActivity() {
                         uri?.let {
                             isLoading = true
                             scope.launch {
-                                val result = loadEpubFromUri(context, uri, state.settings.maxDisplayChars)
+                                val (result, error) = loadEpubFromUri(context, uri, state.settings.maxDisplayChars)
                                 isLoading = false
                                 if (result != null) {
                                     val (book, source) = result
@@ -56,8 +56,8 @@ class MainActivity : ComponentActivity() {
                                 } else {
                                     Toast.makeText(
                                         context,
-                                        "Failed to parse EPUB",
-                                        Toast.LENGTH_SHORT
+                                        "Failed to load EPUB: ${error ?: "unknown error"}",
+                                        Toast.LENGTH_LONG
                                     ).show()
                                 }
                             }
@@ -116,25 +116,26 @@ private suspend fun loadEpubFromUri(
     context: android.content.Context,
     uri: Uri,
     maxChunkChars: Int
-): Pair<Book, BookSource>? = withContext(Dispatchers.IO) {
+): Pair<Pair<Book, BookSource>?, String?> = withContext(Dispatchers.IO) {
     try {
         val inputStream = context.contentResolver.openInputStream(uri)
-            ?: return@withContext null
+            ?: return@withContext Pair(null, "Cannot open file")
 
         val bytes = inputStream.use { it.readBytes() }
+        if (bytes.isEmpty()) return@withContext Pair(null, "File is empty")
 
         val nativeBook = NativeParser.parseEpubWithConfig(bytes, maxChunkChars)
-            ?: return@withContext null
+            ?: return@withContext Pair(null, "Parser returned null (${bytes.size} bytes)")
 
         // Generate a unique ID for this book
         val bookId = UUID.randomUUID().toString()
         val book = nativeBook.toDomain(bookId)
         val source = BookSource(bytes, bookId)
 
-        Pair(book, source)
+        Pair(Pair(book, source), null)
     } catch (e: Exception) {
         e.printStackTrace()
-        null
+        Pair(null, "${e.javaClass.simpleName}: ${e.message}")
     }
 }
 
