@@ -84,10 +84,7 @@ class MainActivity : ComponentActivity() {
                         onWpmChange = viewModel::setWpm,
                         onSettingsClick = { showSettings = true },
                         onOpenBook = {
-                            filePickerLauncher.launch(arrayOf(
-                                "application/epub+zip",
-                                "application/octet-stream"
-                            ))
+                            filePickerLauncher.launch(arrayOf("application/epub+zip"))
                         },
                         onRestart = viewModel::restartBook,
                         onSkipWords = viewModel::skipWords,
