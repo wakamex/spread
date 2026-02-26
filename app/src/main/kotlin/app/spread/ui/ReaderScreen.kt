@@ -5,6 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
@@ -19,6 +21,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -50,6 +53,7 @@ fun ReaderScreen(
     val chapter = state.currentChapter
     val effectiveWpm = state.effectiveWpmInfo
     var showToc by remember { mutableStateOf(false) }
+    var showJumpDialog by remember { mutableStateOf(false) }
 
     // Zen mode: animate UI alpha instead of removing from layout (prevents word position shift)
     val uiAlpha by animateFloatAsState(
@@ -166,7 +170,16 @@ fun ReaderScreen(
             onSkipWords = onSkipWords,
             onPrevChapter = onPrevChapter,
             onNextChapter = onNextChapter,
+            onInfoRowClick = { showJumpDialog = true },
             alpha = uiAlpha
+        )
+    }
+
+    if (showJumpDialog) {
+        JumpToDialog(
+            totalChapterMinutes = effectiveWpm?.chapter?.totalMinutes ?: 0.0,
+            onSeek = onSeek,
+            onDismiss = { showJumpDialog = false }
         )
     }
 }
@@ -351,7 +364,7 @@ private fun calculateORP(word: String): Int {
 }
 
 @Composable
-private fun BottomBar(
+internal fun BottomBar(
     playing: Boolean,
     effectiveWpm: EffectiveWpmInfo?,
     progress: Progress,
@@ -362,6 +375,7 @@ private fun BottomBar(
     onSkipWords: (Int) -> Unit,
     onPrevChapter: () -> Unit,
     onNextChapter: () -> Unit,
+    onInfoRowClick: () -> Unit,
     alpha: Float = 1f
 ) {
     Column(
@@ -374,18 +388,34 @@ private fun BottomBar(
         effectiveWpm?.let { info ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "${if (playing) "▶" else "⏸"} ${info.chapter.wpm} effective WPM",
                     color = Color.White.copy(alpha = 0.9f),
                     fontSize = 14.sp
                 )
-                Text(
-                    text = formatTime(info.chapter.minutesRemaining),
-                    color = Color.White.copy(alpha = 0.7f),
-                    fontSize = 14.sp
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = formatTime(info.chapter.minutesRemaining),
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontSize = 14.sp
+                    )
+                    TextButton(
+                        onClick = onInfoRowClick,
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = Color.White.copy(alpha = 0.7f)
+                        ),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Text("Jump", fontSize = 14.sp)
+                    }
+                }
             }
         }
 
@@ -472,6 +502,126 @@ private fun BottomBar(
                 )
             )
         }
+    }
+}
+
+@Composable
+private fun JumpToDialog(
+    totalChapterMinutes: Double,
+    onSeek: (Float) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var mode by remember { mutableStateOf("Percentage") }
+    var input by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xFF1A1A1A),
+        title = { Text("Jump to position", color = Color.White) },
+        text = {
+            JumpToDialogBody(
+                mode = mode,
+                input = input,
+                onModeChange = { mode = it; input = "" },
+                onInputChange = { input = it }
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val value = input.toDoubleOrNull() ?: return@TextButton
+                    val fraction = when (mode) {
+                        "Percentage" -> (value / 100.0).coerceIn(0.0, 1.0)
+                        "Time" -> if (totalChapterMinutes > 0) {
+                            (value / totalChapterMinutes).coerceIn(0.0, 1.0)
+                        } else 0.0
+                        else -> return@TextButton
+                    }
+                    onSeek(fraction.toFloat())
+                    onDismiss()
+                }
+            ) {
+                Text("Go", color = Color.White)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = Color.White.copy(alpha = 0.7f))
+            }
+        }
+    )
+}
+
+@Composable
+internal fun JumpToDialogBody(
+    mode: String = "Percentage",
+    input: String = "",
+    onModeChange: (String) -> Unit = {},
+    onInputChange: (String) -> Unit = {}
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.selectable(
+                    selected = mode == "Percentage",
+                    onClick = { onModeChange("Percentage") }
+                ),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RadioButton(
+                    selected = mode == "Percentage",
+                    onClick = { onModeChange("Percentage") },
+                    colors = RadioButtonDefaults.colors(
+                        selectedColor = Color.White,
+                        unselectedColor = Color.White.copy(alpha = 0.6f)
+                    )
+                )
+                Text("Percentage", color = Color.White, fontSize = 14.sp)
+            }
+            Row(
+                modifier = Modifier.selectable(
+                    selected = mode == "Time",
+                    onClick = { onModeChange("Time") }
+                ),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RadioButton(
+                    selected = mode == "Time",
+                    onClick = { onModeChange("Time") },
+                    colors = RadioButtonDefaults.colors(
+                        selectedColor = Color.White,
+                        unselectedColor = Color.White.copy(alpha = 0.6f)
+                    )
+                )
+                Text("Time (min)", color = Color.White, fontSize = 14.sp)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = input,
+            onValueChange = onInputChange,
+            label = {
+                Text(
+                    if (mode == "Percentage") "Percentage (0–100)" else "Minutes",
+                    color = Color.White.copy(alpha = 0.7f)
+                )
+            },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            singleLine = true,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
+                focusedBorderColor = Color.White,
+                unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
+                cursorColor = Color.White
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
